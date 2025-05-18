@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  qdrant:
+    image: qdrant/qdrant
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+    environment:
+      - TZ=UTC
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    restart: always
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: Altinors123!
+      POSTGRES_USER: memory_mcp_user
+      POSTGRES_DB: memory_mcp_db
+      TZ: UTC
+    restart: always
+
+volumes:
+  qdrant_storage:
+  postgres_data: 
