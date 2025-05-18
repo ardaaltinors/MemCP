@@ -6,4 +6,6 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastmcp>=2.3.4",
+    "openai>=1.79.0",
+    "qdrant-client>=1.14.2",
 ]
