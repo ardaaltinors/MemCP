@@ -14,13 +14,14 @@ class MemoryManager:
         host: str = "localhost",
         port: int = 6333,
         collection_name: str = "memories",
-        embedding_model: str = "text-embedding-3-small"
+        embedding_model: str = "text-embedding-3-small",
+        score_threshold: float = 0.25
     ):
         # Initialize Qdrant client
         self.client = QdrantClient(host=host, port=port)
         self.collection_name = collection_name
         self.embedding_model = embedding_model
-
+        self.score_threshold = score_threshold
         # Initialize OpenAI client
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
@@ -112,3 +113,27 @@ class MemoryManager:
                 "timestamp": payload.get("timestamp")
             })
         return memories
+
+    def search_related(self, query_text: str) -> list[dict]:
+        """Performs a semantic search in Qdrant for memories related to the query text, filtered by score threshold."""
+        query_embedding = self._embed(query_text)
+
+        search_result = self.client.search(
+            collection_name=self.collection_name,
+            query_vector=query_embedding,
+            score_threshold=self.score_threshold,
+            limit=25,
+            with_payload=True
+        )
+
+        results = []
+        for hit in search_result:
+            payload = hit.payload or {}
+            results.append({
+                "id": hit.id,
+                "content": payload.get("content"),
+                "tags": payload.get("tags"),
+                "score": hit.score,
+                "timestamp": payload.get("timestamp")
+            })
+        return results
