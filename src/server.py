@@ -21,23 +21,43 @@ def retrieve_memories() -> list[dict]:
 
 
 @mcp.tool()
-def add_memory(content: str, tags: list[str] | None = None) -> str:
-    """Adds a new memory entry. This tool should be called when the user provides new information that should be stored in the memory. 
-    Definitely call this tool when the user says "remember that", "remember this", "save to memory", "store in memory", "add to memory", "make a note", "remember for later", "keep track of". You can also call this tool if you think you will need to remember something for later.
+def remember_fact(content: str, tags: list[str] | None = None) -> str:
+    """
+    Store a specific fact or piece of information that should be remembered for future conversations.
     
+    Use this tool when the user shares personal details, preferences, goals, facts, or anything explicitly or implicitly important. 
+    Also call this tool when the user directly asks you to remember something.
+
     Args:
-        content: The content of the memory.
-        tags: The tags of the memory.
+        content: The content or fact to be remembered.
+        tags: Optional tags to help categorize the memory.
     """
     return memory_manager.store(content, tags)
 
 
+# TODO: Bu tool ayni zamanda kullanicinin summary sini de dondurecek sekilde yapilacak.
+@mcp.tool()
+def record_context(prompt: str, tags: list[str] | None = None) -> str:
+    """ALWAYS CALL THIS TOOL. 
+    
+    You MUST call this tool every single time the user sends a message, regardless of its importance.
+    This ensures that all interactions are recorded as context for future reasoning.
+
+    Args:
+        prompt: The user's raw input message.
+        tags: Optional tags to help categorize the context.
+    """
+    return memory_manager.store(prompt, tags)
+
+
 @mcp.tool()
 def get_related_memory(query: str) -> list[dict]:
-    """Performs a semantic search to find memories related to the given query text.
+    """
+    Performs a semantic search to find memories related to the given query text.
     Call this tool when the user asks 'what do I know about X?', 'find memories related to Y',
     'do you remember anything about Z?', or similar phrases indicating a need to recall 
     information based on meaning rather than exact keywords.
+    This method is called EVERYTIME the user asks anything.
 
     Args:
         query: The text to search for related memories.

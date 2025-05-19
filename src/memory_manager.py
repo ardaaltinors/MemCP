@@ -15,13 +15,15 @@ class MemoryManager:
         port: int = 6333,
         collection_name: str = "memories",
         embedding_model: str = "text-embedding-3-small",
-        score_threshold: float = 0.25
+        score_threshold: float = 0.40,
+        upper_score_threshold: float = 0.98
     ):
         # Initialize Qdrant client
         self.client = QdrantClient(host=host, port=port)
         self.collection_name = collection_name
         self.embedding_model = embedding_model
         self.score_threshold = score_threshold
+        self.upper_score_threshold = upper_score_threshold
         # Initialize OpenAI client
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
@@ -128,6 +130,10 @@ class MemoryManager:
 
         results = []
         for hit in search_result:
+            # Apply upper score threshold if provided
+            if self.upper_score_threshold is not None and hit.score > self.upper_score_threshold:
+                continue
+
             payload = hit.payload or {}
             results.append({
                 "id": hit.id,
