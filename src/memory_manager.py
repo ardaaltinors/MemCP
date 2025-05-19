@@ -4,6 +4,9 @@ from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.models import VectorParams, Distance, PointStruct
 import uuid
+from src.db.database import get_db
+from src.db.models import Memory
+from sqlalchemy import select
 
 class MemoryManager:
     def __init__(
@@ -48,16 +51,19 @@ class MemoryManager:
         return resp.data[0].embedding
 
     def store(self, content: str, tags: list[str] | None = None) -> str:
-        """Stores a new memory entry in Qdrant."""
+        """Stores a new memory entry in Qdrant and PostgreSQL."""
+        # Generate a UUID to use in both databases
+        memory_id = str(uuid.uuid4())
+        
+        # Store in Qdrant for vector similarity search
         vector = self._embed(content)
         payload = {
             "content": content,
             "tags": tags or [],
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
-        # Use a UUID as a unique ID
         point = PointStruct(
-            id=str(uuid.uuid4()),
+            id=memory_id,
             vector=vector,
             payload=payload
         )
@@ -65,7 +71,19 @@ class MemoryManager:
             collection_name=self.collection_name,
             points=[point]
         )
-        return "Memory stored in Qdrant."
+        
+        # Store in PostgreSQL for relational queries
+        db = get_db()
+        db_memory = Memory(
+            id=uuid.UUID(memory_id),
+            content=content,
+            tags=tags or [],
+            timestamp=datetime.now(timezone.utc)
+        )
+        db.add(db_memory)
+        db.commit()
+        
+        return f"Memory stored with ID: {memory_id}"
 
     def retrieve_all(self) -> list[dict]:
         """Retrieves all stored memories from Qdrant."""

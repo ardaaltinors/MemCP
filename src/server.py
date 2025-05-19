@@ -4,8 +4,12 @@ from datetime import datetime
 from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
-from .memory_manager import MemoryManager
+from src.memory_manager import MemoryManager
+from src.db import init_db
 
+
+# Initialize the database
+init_db()
 
 mcp = FastMCP("Memory MCP Server")
 memory_manager = MemoryManager()
@@ -17,8 +21,14 @@ def retrieve_memories() -> list[dict]:
 
 
 @mcp.tool()
-def store_memory(content: str, tags: list[str] | None = None) -> str:
-    """Stores a new memory entry."""
+def add_memory(content: str, tags: list[str] | None = None) -> str:
+    """Adds a new memory entry. This tool should be called when the user provides new information that should be stored in the memory. 
+    Definitely call this tool when the user says "remember that", "remember this", "save to memory", "store in memory", "add to memory", "make a note", "remember for later", "keep track of". You can also call this tool if you think you will need to remember something for later.
+    
+    Args:
+        content: The content of the memory.
+        tags: The tags of the memory.
+    """
     return memory_manager.store(content, tags)
 
 
