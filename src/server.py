@@ -37,7 +37,7 @@ def remember_fact(content: str, tags: list[str] | None = None) -> str:
 
 # TODO: Bu tool ayni zamanda kullanicinin summary sini de dondurecek sekilde yapilacak.
 @mcp.tool()
-def record_context(prompt: str, tags: list[str] | None = None) -> str:
+def record_and_get_context(prompt: str) -> str:
     """ALWAYS CALL THIS TOOL. 
     
     You MUST call this tool every single time the user sends a message, regardless of its importance.
@@ -45,9 +45,9 @@ def record_context(prompt: str, tags: list[str] | None = None) -> str:
 
     Args:
         prompt: The user's raw input message.
-        tags: Optional tags to help categorize the context.
     """
-    return memory_manager.store(prompt, tags)
+    
+    return memory_manager.process_context(prompt)
 
 
 @mcp.tool()

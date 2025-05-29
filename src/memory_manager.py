@@ -5,7 +5,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import VectorParams, Distance, PointStruct
 import uuid
 from src.db.database import get_db
-from src.db.models import Memory
+from src.db.models import Memory, UserMessage
 from sqlalchemy import select
 
 class MemoryManager:
@@ -143,3 +143,20 @@ class MemoryManager:
                 "timestamp": payload.get("timestamp")
             })
         return results
+
+    def process_context(self, prompt: str, tags: list[str] | None = None) -> str:
+        """Saves the user message to the database and returns a confirmation."""
+        # For now, using a placeholder user_id. This should be updated
+        # once user authentication / identification is in place.
+        placeholder_user_id = uuid.UUID("00000000-0000-0000-0000-000000000000")
+
+        db = get_db()
+        db_user_message = UserMessage(
+            user_id=placeholder_user_id,
+            message=prompt,
+            timestamp=datetime.now(timezone.utc)
+        )
+        db.add(db_user_message)
+        db.commit()
+
+        return f"Context processed and message saved with ID: {db_user_message.id}"
