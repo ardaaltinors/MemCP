@@ -82,8 +82,7 @@ class MemoryManager:
         db_memory = Memory(
             id=uuid.UUID(memory_id),
             content=content,
-            tags=tags or [],
-            timestamp=datetime.now(timezone.utc)
+            tags=tags or []
         )
         db.add(db_memory)
         db.commit()
@@ -158,8 +157,7 @@ class MemoryManager:
         db = get_db()
         db_user_message = UserMessage(
             user_id=placeholder_user_id,
-            message=prompt,
-            timestamp=datetime.now(timezone.utc)
+            message_content=prompt
         )
         db.add(db_user_message)
         db.commit()
@@ -176,7 +174,7 @@ class MemoryManager:
         if existing_profile:
             existing_metadata_json_str = existing_profile.metadata_json if existing_profile.metadata_json else ""
             existing_summary_text = existing_profile.summary_text if existing_profile.summary_text else ""
-            last_updated_timestamp_iso = existing_profile.last_updated_timestamp.isoformat()
+            last_updated_timestamp_iso = existing_profile.updated_at.isoformat()
             user_synthesized_data = {
                 "metadata_json": existing_metadata_json_str,
                 "summary_text": existing_summary_text,

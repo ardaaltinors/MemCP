@@ -22,9 +22,9 @@ sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, 'src'))
 
 # Import your models' Base
-# This assumes your models are defined in src/db/models.py
-# You will need to create this file and define your Base and models.
-from db.models import Base # Adjusted import path
+# This should point to the Base from which your SQLAlchemy models are derived.
+# from db.models import Base # Old import
+from src.db.models.custom_base import Base # Corrected import for CustomBase's declarative_base() instance
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

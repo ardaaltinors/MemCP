@@ -9,6 +9,7 @@ import threading
 from contextlib import asynccontextmanager
 from src.mcp import mcp
 from src.db.database import engine
+from src.routers import auth
 from qdrant_client import QdrantClient
 from sqlalchemy import text
 import os
@@ -49,6 +50,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# Include the authentication router
+app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 
 @app.get("/")
 async def health_check():
