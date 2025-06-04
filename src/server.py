@@ -38,16 +38,16 @@ def remember_fact(content: str, tags: list[str] | None = None) -> str:
 # TODO: Bu tool ayni zamanda kullanicinin summary sini de dondurecek sekilde yapilacak.
 @mcp.tool()
 def record_and_get_context(prompt: str) -> str:
-    """ALWAYS CALL THIS TOOL. 
-    
+    """
     You MUST call this tool every single time the user sends a message, regardless of its importance.
     This ensures that all interactions are recorded as context for future reasoning.
 
     Args:
         prompt: The user's raw input message.
     """
-    
-    return memory_manager.process_context(prompt)
+    llm_response = memory_manager.process_context(prompt)
+    string = f"User's Profile Summary: {llm_response}\n\n Use this summary to understand the user's profile and preferences.\n Do NOT call this tool again until the user sends a new message."
+    return string
 
 
 @mcp.tool()

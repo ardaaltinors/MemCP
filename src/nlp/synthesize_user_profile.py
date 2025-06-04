@@ -1,7 +1,7 @@
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_google_genai import ChatGoogleGenerativeAI
-
+from pydantic import BaseModel
 from src.nlp.prompts import user_profile_synthesizer_prompt
 
 
@@ -9,8 +9,12 @@ _llm = ChatGoogleGenerativeAI(temperature=0, model="gemini-2.5-flash-preview-05-
 _prompt_template = PromptTemplate.from_template(user_profile_synthesizer_prompt)
 _output_parser = StrOutputParser()
 
+class LLMAnalysisResult(BaseModel):
+    user_profile_summary: str
+    user_profile_metadata: str
+
 # Construct the chain
-_profile_synthesis_chain = _prompt_template | _llm | _output_parser
+_profile_synthesis_chain = _prompt_template | _llm.with_structured_output(LLMAnalysisResult)
 
 def get_llm_profile_synthesis(
     user_messages_str: str,
@@ -63,4 +67,5 @@ if __name__ == "__main__":
     )
 
     print("\n--- Raw LLM Response ---")
-    print(raw_llm_response)
+    print(raw_llm_response.user_profile_summary)
+    print(raw_llm_response.user_profile_metadata)
