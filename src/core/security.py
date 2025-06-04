@@ -9,9 +9,15 @@ from pydantic import ValidationError
 from src.schemas.token import TokenPayload
 
 # Environment variables
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")  # Fallback for local dev, ensure it's strong in prod
+SECRET_KEY = os.getenv("AUTH_SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("AUTH_ACCESS_TOKEN_EXPIRE_MINUTES"))
+
+# Raise an error if the environment variables are not set
+if not SECRET_KEY:
+    raise ValueError("AUTH_SECRET_KEY is not set")
+if not ACCESS_TOKEN_EXPIRE_MINUTES:
+    raise ValueError("AUTH_ACCESS_TOKEN_EXPIRE_MINUTES is not set")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

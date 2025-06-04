@@ -1,5 +1,7 @@
+import uuid
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from datetime import datetime
 
 # Shared properties
 class UserBase(BaseModel):
@@ -17,10 +19,11 @@ class UserUpdate(UserBase):
     password: Optional[str] = None
 
 class UserInDBBase(UserBase):
-    id: int
+    id: uuid.UUID
+    api_key_created_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True # Changed from from_attributes = True for Pydantic v1 compatibility if needed, else orm_mode
+        from_attributes = True
 
 # Additional properties to return via API
 class User(UserInDBBase):
@@ -28,4 +31,21 @@ class User(UserInDBBase):
 
 # Additional properties stored in DB
 class UserInDB(UserInDBBase):
-    hashed_password: str 
+    hashed_password: str
+    api_key: Optional[str] = None
+
+# Schema for API key responses
+class ApiKeyResponse(BaseModel):
+    api_key: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class ApiKeyInfo(BaseModel):
+    has_api_key: bool
+    api_key: Optional[str] = None
+    created_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True 

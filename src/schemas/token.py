@@ -6,4 +6,4 @@ class Token(BaseModel):
     token_type: str
 
 class TokenPayload(BaseModel):
-    sub: Optional[str] = None # 'sub' typically stores the user identifier (e.g., username or user ID) 
+    sub: Optional[str] = None

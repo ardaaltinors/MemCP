@@ -11,7 +11,6 @@ class Memory(CustomBase):
     content = Column(Text, nullable=False)
     tags = Column(JSONB, nullable=True)
     
-    # Foreign key to User table
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
 
     user = relationship("User", back_populates="memories")
