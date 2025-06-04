@@ -35,7 +35,6 @@ def remember_fact(content: str, tags: list[str] | None = None) -> str:
     return memory_manager.store(content, tags)
 
 
-# TODO: Bu tool ayni zamanda kullanicinin summary sini de dondurecek sekilde yapilacak.
 @mcp.tool()
 def record_and_get_context(prompt: str) -> str:
     """
@@ -68,13 +67,3 @@ def get_related_memory(query: str) -> list[dict]:
 @mcp.custom_route("/health", methods=["GET"])
 async def health_check(request: Request) -> PlainTextResponse:
     return PlainTextResponse("OK")
-
-
-if __name__ == "__main__":
-    mcp.run(
-        transport="streamable-http",
-        host="127.0.0.1",
-        port=4200,
-        path="/mcp",
-        log_level="debug",
-    )
