@@ -7,7 +7,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 import threading
 from contextlib import asynccontextmanager
-from src.mcp import mcp
+from src.mcp import mcp_app
 from src.db.database import engine
 from src.routers import auth
 from qdrant_client import QdrantClient
@@ -22,11 +22,10 @@ logger = logging.getLogger(__name__)
 # Function to run the MCP server
 def run_mcp_server():
     try:
-        mcp.run(
-            transport="streamable-http",
+        uvicorn.run(
+            mcp_app,
             host="127.0.0.1",
-            port=4200, # MCP server port
-            path="/mcp",
+            port=4200,  # MCP server port
             log_level="debug",
         )
     except Exception as e:

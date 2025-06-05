@@ -4,8 +4,23 @@ from datetime import datetime
 from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware import Middleware
 from src.memory_manager import MemoryManager
 from src.db import init_db
+
+
+class UserCredentialMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Extract user credential from path
+        path = request.url.path
+        if path.startswith("/mcp/") and len(path) > 5:  # "/mcp/"
+            user_credential = path[5:]  # Remove "/mcp/" prefix
+            if user_credential and user_credential != "health":
+                print(f"USERCREDENTIAL from path: {user_credential}")
+        
+        response = await call_next(request)
+        return response
 
 
 # Initialize the database
@@ -67,3 +82,12 @@ def get_related_memory(query: str) -> list[dict]:
 @mcp.custom_route("/health", methods=["GET"])
 async def health_check(request: Request) -> PlainTextResponse:
     return PlainTextResponse("OK")
+
+
+# Create the ASGI app with middleware
+mcp_app = mcp.http_app(
+    path="/mcp",
+    middleware=[
+        Middleware(UserCredentialMiddleware)
+    ]
+)
