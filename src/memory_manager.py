@@ -9,6 +9,7 @@ from src.db.database import get_db
 from src.db.models import Memory, UserMessage, ProcessedUserProfile
 from sqlalchemy import select
 from src.nlp.synthesize_user_profile import get_llm_profile_synthesis
+from src.core.context import get_current_user_id
 
 class MemoryManager:
     def __init__(
@@ -150,13 +151,14 @@ class MemoryManager:
         Saves the user message to the database, synthesizes a user profile based on the message,
         and returns the synthesized profile.
         """
-        # For now, using a placeholder user_id. This should be updated
-        # once user authentication / identification is in place.
-        placeholder_user_id = uuid.UUID("00000000-0000-0000-0000-000000000000")
+        # Get the current user_id from async context
+        user_id = get_current_user_id()
+        if user_id is None:
+            raise ValueError("No user_id found in context")
 
         db = get_db()
         db_user_message = UserMessage(
-            user_id=placeholder_user_id,
+            user_id=user_id,
             message_content=prompt
         )
         db.add(db_user_message)
@@ -164,7 +166,7 @@ class MemoryManager:
 
         # 1) Get user's metadata, summary text, and last_updated_timestamp
         user_synthesized_data = None
-        stmt = select(ProcessedUserProfile).where(ProcessedUserProfile.user_id == placeholder_user_id)
+        stmt = select(ProcessedUserProfile).where(ProcessedUserProfile.user_id == user_id)
         existing_profile = db.execute(stmt).scalars().first()
 
         existing_metadata_json_str = ""
@@ -226,7 +228,7 @@ class MemoryManager:
                 db.add(existing_profile) # Ensure SQLAlchemy tracks changes
             else:
                 new_db_profile = ProcessedUserProfile(
-                    user_id=placeholder_user_id,
+                    user_id=user_id,
                     summary_text=new_summary,
                     metadata_json=new_metadata_json_str
                     # last_updated_timestamp will be set by server_default for new entries

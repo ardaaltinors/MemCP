@@ -4,6 +4,7 @@ from starlette.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from src.db.database import SessionLocal
 from src.crud.crud_user import get_user_by_api_key
+from src.core.context import set_current_user_id
 
 
 class UserCredentialMiddleware(BaseHTTPMiddleware):
@@ -35,6 +36,8 @@ class UserCredentialMiddleware(BaseHTTPMiddleware):
                             
                             # Store user info in request state for later use
                             request.state.user = user
+                            # Set the user_id in thread-local context for memory_manager
+                            set_current_user_id(user.id)
                         else:
                             if self.debug:
                                 print(f"❌ INACTIVE USER: {user.username} ({user.email})")
