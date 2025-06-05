@@ -7,6 +7,7 @@ from passlib.context import CryptContext
 from pydantic import ValidationError
 
 from src.schemas.token import TokenPayload
+from src.exceptions import ConfigurationError, InvalidTokenError
 
 # Environment variables
 SECRET_KEY = os.getenv("AUTH_SECRET_KEY")
@@ -15,9 +16,17 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("AUTH_ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 # Raise an error if the environment variables are not set
 if not SECRET_KEY:
-    raise ValueError("AUTH_SECRET_KEY is not set")
+    raise ConfigurationError(
+        message="Authentication secret key is required",
+        config_key="AUTH_SECRET_KEY",
+        expected_type="string"
+    )
 if not ACCESS_TOKEN_EXPIRE_MINUTES:
-    raise ValueError("AUTH_ACCESS_TOKEN_EXPIRE_MINUTES is not set")
+    raise ConfigurationError(
+        message="Access token expiration time is required",
+        config_key="AUTH_ACCESS_TOKEN_EXPIRE_MINUTES",
+        expected_type="integer"
+    )
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -43,4 +52,26 @@ def decode_token(token: str) -> Optional[TokenPayload]:
         token_data = TokenPayload(**payload)
         return token_data
     except (JWTError, ValidationError):
-        return None 
+        return None
+
+def decode_token_strict(token: str) -> TokenPayload:
+    """
+    Decode token with strict error handling - raises exceptions instead of returning None.
+    Use this when you want to handle token errors explicitly.
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        token_data = TokenPayload(**payload)
+        return token_data
+    except JWTError as e:
+        raise InvalidTokenError(
+            message="Invalid JWT token",
+            token_type="JWT",
+            validation_error=str(e)
+        )
+    except ValidationError as e:
+        raise InvalidTokenError(
+            message="Token payload validation failed",
+            token_type="JWT",
+            validation_error=str(e)
+        ) 

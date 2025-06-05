@@ -8,6 +8,11 @@ from src.crud import crud_user
 from src.db.database import get_db
 from src.db.models.user import User as DBUser
 from src.schemas import user as user_schema, token as token_schema
+from src.exceptions import (
+    InvalidCredentialsError, InactiveUserError, InvalidAPIKeyError,
+    DuplicateRecordError, RecordNotFoundError
+)
+from src.exceptions.handlers import ExceptionHandler
 
 router = APIRouter()
 
@@ -16,43 +21,32 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 api_key_scheme = HTTPBearer()
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> DBUser:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     token_data = security.decode_token(token)
     if token_data is None or token_data.sub is None:
-        raise credentials_exception
+        raise InvalidCredentialsError(message="Could not validate credentials")
     
     user = crud_user.get_user_by_username(db, username=token_data.sub)
     if user is None:
-        raise credentials_exception
+        raise InvalidCredentialsError(message="User not found", username=token_data.sub)
     return user
 
 
 async def get_current_user_from_api_key(api_key_auth = Depends(api_key_scheme), db: Session = Depends(get_db)) -> DBUser:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid API key",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    
     api_key = api_key_auth.credentials
     
     user = crud_user.get_user_by_api_key(db, api_key=api_key)
     if user is None:
-        raise credentials_exception
+        raise InvalidAPIKeyError(api_key_prefix=api_key[:10] + "..." if len(api_key) > 10 else api_key)
     
     if not crud_user.is_user_active(user):
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise InactiveUserError(user_id=str(user.id), username=user.username)
     
     return user
 
 
 async def get_current_active_user(current_user: DBUser = Depends(get_current_user)) -> DBUser:
     if not crud_user.is_user_active(current_user):
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise InactiveUserError(user_id=str(current_user.id), username=current_user.username)
     return current_user
 
 @router.post("/token", response_model=token_schema.Token, tags=["Authentication"])
@@ -62,11 +56,7 @@ async def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth
     """
     user = crud_user.authenticate_user(db, username=form_data.username, password=form_data.password)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise InvalidCredentialsError(username=form_data.username)
     access_token_expires = timedelta(minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(
         subject=user.username, expires_delta=access_token_expires
@@ -77,10 +67,20 @@ async def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth
 def create_user(user_in: user_schema.UserCreate, db: Session = Depends(get_db)):
     db_user_by_email = crud_user.get_user_by_email(db, email=user_in.email)
     if db_user_by_email:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise DuplicateRecordError(
+            message="Email already registered", 
+            table_name="users",
+            conflicting_field="email",
+            conflicting_value=user_in.email
+        )
     db_user_by_username = crud_user.get_user_by_username(db, username=user_in.username)
     if db_user_by_username:
-        raise HTTPException(status_code=400, detail="Username already registered")
+        raise DuplicateRecordError(
+            message="Username already registered",
+            table_name="users", 
+            conflicting_field="username",
+            conflicting_value=user_in.username
+        )
     return crud_user.create_user(db=db, user_in=user_in)
 
 @router.get("/users/me", response_model=user_schema.User, tags=["Users"])
@@ -136,7 +136,11 @@ async def revoke_api_key(current_user: DBUser = Depends(get_current_active_user)
     """
     success = crud_user.revoke_api_key(db, current_user)
     if not success:
-        raise HTTPException(status_code=404, detail="No API key found")
+        raise RecordNotFoundError(
+            message="No API key found for this user",
+            table_name="users",
+            record_id=str(current_user.id)
+        )
     return {"message": "API key revoked successfully"}
 
 # Example endpoint that can be accessed with API key

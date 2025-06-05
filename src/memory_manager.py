@@ -10,6 +10,11 @@ from src.db.models import Memory, UserMessage, ProcessedUserProfile
 from sqlalchemy import select
 from src.nlp.synthesize_user_profile import get_llm_profile_synthesis
 from src.core.context import get_current_user_id
+from src.exceptions import (
+    ConfigurationError, UserContextError, MemoryStoreError, 
+    MemorySearchError, EmbeddingError, OpenAIServiceError,
+    QdrantServiceError, DatabaseOperationError
+)
 
 class MemoryManager:
     def __init__(
@@ -30,7 +35,11 @@ class MemoryManager:
         # Initialize OpenAI client
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError("OPENAI_API_KEY environment variable not found.")
+            raise ConfigurationError(
+                message="OpenAI API key is required for memory operations",
+                config_key="OPENAI_API_KEY",
+                expected_type="string"
+            )
         self.openai_client = OpenAI(api_key=api_key)
 
         # Ensure the collection exists in Qdrant
@@ -50,11 +59,19 @@ class MemoryManager:
 
     def _embed(self, content: str) -> list[float]:
         # Generate embedding for the content string
-        resp = self.openai_client.embeddings.create(
-            input=[content],
-            model=self.embedding_model
-        )
-        return resp.data[0].embedding
+        try:
+            resp = self.openai_client.embeddings.create(
+                input=[content],
+                model=self.embedding_model
+            )
+            return resp.data[0].embedding
+        except Exception as e:
+            raise EmbeddingError(
+                message="Failed to generate embedding for content",
+                text_content=content,
+                embedding_model=self.embedding_model,
+                original_exception=e
+            )
 
     def store(self, content: str, tags: list[str] | None = None) -> str:
         """Stores a new memory entry in Qdrant and PostgreSQL."""
@@ -63,39 +80,58 @@ class MemoryManager:
         # Get the current user_id from async context
         user_id = get_current_user_id()
         if user_id is None:
-            raise ValueError("No user_id found in context")
+            raise UserContextError(
+                message="User context is required for memory storage",
+                operation="store_memory"
+            )
         
         # Generate a UUID to use in both databases
         memory_id = str(uuid.uuid4())
         
         # Store in Qdrant for vector similarity search
-        vector = self._embed(content)
-        payload = {
-            "content": content,
-            "tags": tags or [],
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "user_id": str(user_id)  # Include user_id in Qdrant payload
-        }
-        point = PointStruct(
-            id=memory_id,
-            vector=vector,
-            payload=payload
-        )
-        self.client.upsert(
-            collection_name=self.collection_name,
-            points=[point]
-        )
+        try:
+            vector = self._embed(content)
+            payload = {
+                "content": content,
+                "tags": tags or [],
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "user_id": str(user_id)  # Include user_id in Qdrant payload
+            }
+            point = PointStruct(
+                id=memory_id,
+                vector=vector,
+                payload=payload
+            )
+            self.client.upsert(
+                collection_name=self.collection_name,
+                points=[point]
+            )
+        except Exception as e:
+            raise QdrantServiceError(
+                message="Failed to store memory in vector database",
+                operation="upsert",
+                collection_name=self.collection_name,
+                original_exception=e
+            )
         
         # Store in PostgreSQL for relational queries
-        db = get_db()
-        db_memory = Memory(
-            id=uuid.UUID(memory_id),
-            content=content,
-            tags=tags or [],
-            user_id=user_id  # Associate memory with user
-        )
-        db.add(db_memory)
-        db.commit()
+        try:
+            db = get_db()
+            db_memory = Memory(
+                id=uuid.UUID(memory_id),
+                content=content,
+                tags=tags or [],
+                user_id=user_id  # Associate memory with user
+            )
+            db.add(db_memory)
+            db.commit()
+        except Exception as e:
+            raise DatabaseOperationError(
+                message="Failed to store memory in relational database",
+                operation="insert",
+                table_name="memories",
+                original_exception=e
+            )
         
         return f"Memory stored with ID: {memory_id} for user: {user_id}"
 
@@ -108,7 +144,10 @@ class MemoryManager:
         # Get the current user_id from async context
         user_id = get_current_user_id()
         if user_id is None:
-            raise ValueError("No user_id found in context")
+            raise UserContextError(
+                message="User context is required for memory search",
+                operation="search_memories"
+            )
         
         query_embedding = self._embed(query_text)
 
@@ -122,14 +161,23 @@ class MemoryManager:
             ]
         )
 
-        search_result = self.client.search(
-            collection_name=self.collection_name,
-            query_vector=query_embedding,
-            query_filter=user_filter,  # Filter by user_id
-            score_threshold=self.score_threshold,
-            limit=25,
-            with_payload=True
-        )
+        try:
+            search_result = self.client.search(
+                collection_name=self.collection_name,
+                query_vector=query_embedding,
+                query_filter=user_filter,  # Filter by user_id
+                score_threshold=self.score_threshold,
+                limit=25,
+                with_payload=True
+            )
+        except Exception as e:
+            raise MemorySearchError(
+                message="Failed to search memories in vector database",
+                query_text=query_text,
+                user_id=str(user_id),
+                search_type="semantic_search",
+                original_exception=e
+            )
 
         results = []
         for hit in search_result:
@@ -156,7 +204,10 @@ class MemoryManager:
         # Get the current user_id from async context
         user_id = get_current_user_id()
         if user_id is None:
-            raise ValueError("No user_id found in context")
+            raise UserContextError(
+                message="User context is required for profile processing",
+                operation="process_context"
+            )
 
         db = get_db()
         db_user_message = UserMessage(
@@ -241,8 +292,12 @@ class MemoryManager:
                 db.commit()
             except Exception as e:
                 db.rollback()
-                print(f"Error committing profile update to DB: {e}")
-                # Decide if we want to propagate this error or handle it silently
+                raise DatabaseOperationError(
+                    message="Failed to update user profile in database",
+                    operation="update",
+                    table_name="processed_user_profiles",
+                    original_exception=e
+                )
         else:
             print(f"Could not extract summary or metadata from LLM response. Response: {llm_response}")
             # Optionally, log this error more formally

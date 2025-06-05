@@ -13,6 +13,8 @@ from src.routers import auth
 from qdrant_client import QdrantClient
 from sqlalchemy import text
 import os
+from src.exceptions import MemoryMCPException, ServiceUnavailableError
+from src.exceptions.handlers import handle_memory_mcp_exception
 
 # Configure logging
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper(), 
@@ -48,6 +50,9 @@ async def lifespan(app: FastAPI):
     logger.info("FastAPI application shutting down...")
 
 app = FastAPI(lifespan=lifespan)
+
+# Add exception handlers
+app.add_exception_handler(MemoryMCPException, handle_memory_mcp_exception)
 
 # Include the authentication router
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
@@ -104,7 +109,10 @@ async def health_check():
         status["services"]["qdrant"]["status"] == "unhealthy"):
         status["status"] = "unhealthy"
         # If both are unhealthy, raise 503 immediately
-        raise HTTPException(status_code=503, detail=status) 
+        raise ServiceUnavailableError(
+            message="All critical services are unavailable",
+            service_name="postgres,qdrant"
+        ) 
     elif (status["services"]["postgres"]["status"] == "unhealthy" or 
           status["services"]["qdrant"]["status"] == "unhealthy"):
         status["status"] = "degraded"

@@ -5,6 +5,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from src.db.database import SessionLocal
 from src.crud.crud_user import get_user_by_api_key
 from src.core.context import set_current_user_id
+from src.exceptions import InvalidAPIKeyError, InactiveUserError
+from src.exceptions.handlers import ExceptionHandler
 
 
 class UserCredentialMiddleware(BaseHTTPMiddleware):
@@ -41,17 +43,18 @@ class UserCredentialMiddleware(BaseHTTPMiddleware):
                         else:
                             if self.debug:
                                 print(f"❌ INACTIVE USER: {user.username} ({user.email})")
-                            return JSONResponse(
-                                status_code=403,
-                                content={"error": "User account is inactive"}
+                            exception = InactiveUserError(
+                                user_id=str(user.id),
+                                username=user.username
                             )
+                            return ExceptionHandler.to_json_response(exception)
                     else:
                         if self.debug:
                             print(f"❌ INVALID API KEY: {api_key}")
-                        return JSONResponse(
-                            status_code=401,
-                            content={"error": "Invalid API key"}
+                        exception = InvalidAPIKeyError(
+                            api_key_prefix=api_key[:10] + "..." if len(api_key) > 10 else api_key
                         )
+                        return ExceptionHandler.to_json_response(exception)
                 finally:
                     db.close()
         
