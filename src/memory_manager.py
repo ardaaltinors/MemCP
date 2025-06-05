@@ -19,19 +19,34 @@ from src.exceptions import (
 class MemoryManager:
     def __init__(
         self,
-        host: str = "localhost",
-        port: int = 6333,
-        collection_name: str = "memories",
-        embedding_model: str = "text-embedding-3-small",
-        score_threshold: float = 0.40,
-        upper_score_threshold: float = 0.98
+        host: str = None,
+        port: int = None,
+        collection_name: str = None,
+        embedding_model: str = None,
+        score_threshold: float = None,
+        upper_score_threshold: float = None
     ):
+        # Read configuration from environment variables with fallbacks
+        self.host = host or os.getenv("QDRANT_HOST", "localhost")
+        self.port = port or int(os.getenv("QDRANT_PORT", "6333"))
+        self.collection_name = collection_name or os.getenv("QDRANT_COLLECTION_NAME", "memories")
+        self.embedding_model = embedding_model or os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+        
+        # Convert string environment variables to floats with fallbacks
+        self.score_threshold = score_threshold if score_threshold is not None else float(os.getenv("MEMORY_SCORE_THRESHOLD", "0.40"))
+        self.upper_score_threshold = upper_score_threshold if upper_score_threshold is not None else float(os.getenv("MEMORY_UPPER_SCORE_THRESHOLD", "0.98"))
+        
         # Initialize Qdrant client
-        self.client = QdrantClient(host=host, port=port)
-        self.collection_name = collection_name
-        self.embedding_model = embedding_model
-        self.score_threshold = score_threshold
-        self.upper_score_threshold = upper_score_threshold
+        try:
+            self.client = QdrantClient(host=self.host, port=self.port)
+        except Exception as e:
+            raise QdrantServiceError(
+                message="Failed to connect to Qdrant database",
+                operation="initialize_client",
+                collection_name=self.collection_name,
+                original_exception=e
+            )
+        
         # Initialize OpenAI client
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:

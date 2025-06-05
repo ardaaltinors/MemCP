@@ -1,9 +1,9 @@
 import os
+import bcrypt
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pydantic import ValidationError
 
 from src.schemas.token import TokenPayload
@@ -28,8 +28,6 @@ if not ACCESS_TOKEN_EXPIRE_MINUTES:
         expected_type="integer"
     )
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -41,10 +39,34 @@ def create_access_token(subject: str, expires_delta: Optional[timedelta] = None)
     return encoded_jwt
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    """
+    Verify a password against its hash using bcrypt.
+    
+    Args:
+        plain_password: The plain text password to verify
+        hashed_password: The bcrypt hash to verify against
+        
+    Returns:
+        True if the password matches the hash, False otherwise
+    """
+    password_bytes = plain_password.encode('utf-8')
+    hashed_bytes = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(password_bytes, hashed_bytes)
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    """
+    Hash a password using bcrypt.
+    
+    Args:
+        password: The plain text password to hash
+        
+    Returns:
+        The bcrypt hash as a string
+    """
+    password_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed_bytes = bcrypt.hashpw(password_bytes, salt)
+    return hashed_bytes.decode('utf-8')
 
 def decode_token(token: str) -> Optional[TokenPayload]:
     try:

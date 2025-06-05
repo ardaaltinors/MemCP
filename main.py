@@ -46,7 +46,6 @@ async def lifespan(app: FastAPI):
     mcp_thread.start()
     logger.info("MCP server has been initiated in a background thread.")
     yield
-    # Cleanup code would go here if needed
     logger.info("FastAPI application shutting down...")
 
 app = FastAPI(lifespan=lifespan)
