@@ -180,7 +180,7 @@ class ExceptionHandler:
         return sanitized
 
 
-def handle_memory_mcp_exception(exception: MemoryMCPException) -> JSONResponse:
+def handle_memory_mcp_exception(request, exception: MemoryMCPException) -> JSONResponse:
     """
     FastAPI exception handler for MemoryMCPException.
     
@@ -188,6 +188,7 @@ def handle_memory_mcp_exception(exception: MemoryMCPException) -> JSONResponse:
     automatically handle all custom exceptions consistently.
     
     Args:
+        request: The FastAPI request object
         exception: The MemoryMCPException to handle
         
     Returns:
