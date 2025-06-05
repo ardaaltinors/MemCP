@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from src.mcp import mcp_app
 from src.db.database import engine
 from src.routers import auth
+from src.core.config import MCP_SERVER_HOST, MCP_SERVER_PORT
 from qdrant_client import QdrantClient
 from sqlalchemy import text
 import os
@@ -26,8 +27,8 @@ def run_mcp_server():
     try:
         uvicorn.run(
             mcp_app,
-            host="127.0.0.1",
-            port=4200,  # MCP server port
+            host=MCP_SERVER_HOST,
+            port=MCP_SERVER_PORT,
             log_level="debug",
         )
     except Exception as e:
@@ -120,4 +121,4 @@ async def health_check():
     return status
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host=MCP_SERVER_HOST, port=8000)

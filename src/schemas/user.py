@@ -48,4 +48,12 @@ class ApiKeyInfo(BaseModel):
     created_at: Optional[datetime] = None
     
     class Config:
+        from_attributes = True
+
+class ConnectionUrlResponse(BaseModel):
+    connection_url: str
+    api_key: str
+    created_at: datetime
+    
+    class Config:
         from_attributes = True 
