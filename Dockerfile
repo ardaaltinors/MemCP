@@ -6,7 +6,7 @@
 # =============================================================================
 # Stage 1: Base UV installer
 # =============================================================================
-FROM python:3.11-slim as uv-installer
+FROM python:3.11-slim AS uv-installer
 
 # Install UV package manager
 RUN pip install --no-cache-dir uv
@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir uv
 # =============================================================================
 # Stage 2: Dependencies builder
 # =============================================================================
-FROM uv-installer as dependencies
+FROM uv-installer AS dependencies
 
 # Set working directory
 WORKDIR /app
@@ -29,7 +29,7 @@ RUN uv sync --frozen --no-dev --no-cache
 # =============================================================================
 # Stage 3: Application builder
 # =============================================================================
-FROM dependencies as builder
+FROM dependencies AS builder
 
 # Copy source code
 COPY . .
@@ -52,7 +52,7 @@ RUN python -m compileall src/ && \
 # =============================================================================
 # Stage 4: Production runtime
 # =============================================================================
-FROM python:3.11-slim as production
+FROM python:3.11-slim AS production
 
 # Install system dependencies and security updates
 RUN apt-get update && \

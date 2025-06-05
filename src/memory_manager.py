@@ -6,7 +6,6 @@ from qdrant_client.models import VectorParams, Distance, PointStruct
 import uuid
 import json
 from src.db.database import SessionLocal, get_db
-import threading
 from src.db.models import Memory, UserMessage, ProcessedUserProfile
 from sqlalchemy import select
 from src.nlp.synthesize_user_profile import get_llm_profile_synthesis
@@ -16,6 +15,7 @@ from src.exceptions import (
     MemorySearchError, EmbeddingError, OpenAIServiceError,
     QdrantServiceError, DatabaseOperationError
 )
+from src.tasks import update_profile_background
 
 class MemoryManager:
     def __init__(
@@ -214,7 +214,7 @@ class MemoryManager:
 
     def process_context(self, prompt: str, tags: list[str] | None = None) -> str:
         """Record the user's message and return the previously synthesized profile.
-        The profile update with the new message runs asynchronously."""
+        The profile update with the new message runs asynchronously via Celery."""
 
         user_id = get_current_user_id()
         if user_id is None:
@@ -249,14 +249,16 @@ class MemoryManager:
         finally:
             db.close()
 
-        threading.Thread(
-            target=self._update_profile_background,
-            args=(user_id, prompt, existing_metadata_json_str, existing_summary_text),
-            daemon=True,
-        ).start()
+        # Dispatch the background task to Celery
+        update_profile_background.delay(
+            user_id_str=str(user_id),
+            prompt=prompt,
+            existing_metadata_json_str=existing_metadata_json_str,
+            existing_summary_text=existing_summary_text,
+        )
 
         responseString = (
-            f"User's Metadata: \n {user_synthesized_data['metadata_json']}\n User's Profile Summary: \n\n {user_synthesized_data['summary_text']}\n"
+            f"User's Metadata: \\n {user_synthesized_data['metadata_json']}\\n User's Profile Summary: \\n\\n {user_synthesized_data['summary_text']}\\n"
         )
         return responseString
 
@@ -271,7 +273,7 @@ class MemoryManager:
 
         db = SessionLocal()
         try:
-            user_messages_str = f"Timestamp: {datetime.now(timezone.utc).isoformat()}\nUser: {prompt}"
+            user_messages_str = f"Timestamp: {datetime.now(timezone.utc).isoformat()}\\nUser: {prompt}"
 
             llm_response = get_llm_profile_synthesis(
                 user_messages_str=user_messages_str,

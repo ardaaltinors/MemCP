@@ -19,11 +19,15 @@ while ! nc -z $QDRANT_HOST $QDRANT_PORT; do
 done
 echo "✅ Qdrant is ready!"
 
-# Run database migrations
-echo "🔄 Running database migrations..."
-cd /app
-uv run alembic upgrade head
-echo "✅ Database migrations completed!"
+# Run database migrations (skip for Celery workers)
+if [ "$SKIP_MIGRATIONS" != "true" ]; then
+    echo "🔄 Running database migrations..."
+    cd /app
+    uv run alembic upgrade head
+    echo "✅ Database migrations completed!"
+else
+    echo "⏭️ Skipping database migrations (SKIP_MIGRATIONS=true)"
+fi
 
 # Start the application
 echo "🚀 Starting the application..."
