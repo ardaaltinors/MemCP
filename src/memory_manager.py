@@ -5,7 +5,8 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import VectorParams, Distance, PointStruct
 import uuid
 import json
-from src.db.database import get_db
+from src.db.database import SessionLocal, get_db
+import threading
 from src.db.models import Memory, UserMessage, ProcessedUserProfile
 from sqlalchemy import select
 from src.nlp.synthesize_user_profile import get_llm_profile_synthesis
@@ -212,111 +213,106 @@ class MemoryManager:
         return results
 
     def process_context(self, prompt: str, tags: list[str] | None = None) -> str:
-        """
-        Saves the user message to the database, synthesizes a user profile based on the message,
-        and returns the synthesized profile.
-        """
-        # Get the current user_id from async context
+        """Record the user's message and return the previously synthesized profile.
+        The profile update with the new message runs asynchronously."""
+
         user_id = get_current_user_id()
         if user_id is None:
             raise UserContextError(
                 message="User context is required for profile processing",
-                operation="process_context"
+                operation="process_context",
             )
 
-        db = get_db()
-        db_user_message = UserMessage(
-            user_id=user_id,
-            message_content=prompt
-        )
-        db.add(db_user_message)
-        db.commit()
+        db = SessionLocal()
+        try:
+            db_user_message = UserMessage(user_id=user_id, message_content=prompt)
+            db.add(db_user_message)
+            db.commit()
 
-        # 1) Get user's metadata, summary text, and last_updated_timestamp
-        user_synthesized_data = None
-        stmt = select(ProcessedUserProfile).where(ProcessedUserProfile.user_id == user_id)
-        existing_profile = db.execute(stmt).scalars().first()
+            stmt = select(ProcessedUserProfile).where(ProcessedUserProfile.user_id == user_id)
+            existing_profile = db.execute(stmt).scalars().first()
 
-        existing_metadata_json_str = ""
-        existing_summary_text = ""
-        last_updated_timestamp_iso = None
+            existing_metadata_json_str = ""
+            existing_summary_text = ""
+            last_updated_timestamp_iso = None
 
-        if existing_profile:
-            existing_metadata_json_str = existing_profile.metadata_json if existing_profile.metadata_json else ""
-            existing_summary_text = existing_profile.summary_text if existing_profile.summary_text else ""
-            last_updated_timestamp_iso = existing_profile.updated_at.isoformat()
+            if existing_profile:
+                existing_metadata_json_str = existing_profile.metadata_json or ""
+                existing_summary_text = existing_profile.summary_text or ""
+                last_updated_timestamp_iso = existing_profile.updated_at.isoformat()
+
             user_synthesized_data = {
                 "metadata_json": existing_metadata_json_str,
                 "summary_text": existing_summary_text,
-                "last_updated_timestamp": last_updated_timestamp_iso
+                "last_updated_timestamp": last_updated_timestamp_iso,
             }
-        else:
-             user_synthesized_data = { # Default if no profile exists
-                "metadata_json": "",
-                "summary_text": "",
-                "last_updated_timestamp": None
-            }
-        
-        # Format the current prompt as a user message string
-        # This might need adjustment if the synthesis function expects a more complex history
-        user_messages_str = f"Timestamp: {datetime.now(timezone.utc).isoformat()}\\nUser: {prompt}"
+        finally:
+            db.close()
 
-        # 2) Call the get_llm_profile_synthesis function
-        llm_response = get_llm_profile_synthesis(
-            user_messages_str=user_messages_str,
-            existing_metadata_json_str=existing_metadata_json_str,
-            existing_summary_text=existing_summary_text
+        threading.Thread(
+            target=self._update_profile_background,
+            args=(user_id, prompt, existing_metadata_json_str, existing_summary_text),
+            daemon=True,
+        ).start()
+
+        responseString = (
+            f"User's Metadata: \n {user_synthesized_data['metadata_json']}\n User's Profile Summary: \n\n {user_synthesized_data['summary_text']}\n"
         )
-        
-        # Extract summary and metadata from LLMAnalysisResult object
-        new_summary = None
-        new_metadata_json_str = None
-
-        try:
-            new_summary = llm_response.user_profile_summary.strip()
-            raw_metadata_str = llm_response.user_profile_metadata.strip()
-            
-            # Validate the extracted string is valid JSON
-            json.loads(raw_metadata_str)
-            new_metadata_json_str = raw_metadata_str
-        except json.JSONDecodeError:
-            print(f"Error decoding metadata JSON from LLM response: {raw_metadata_str}")
-            # Fallback to an empty JSON object string if parsing fails
-            new_metadata_json_str = "{}"
-        except AttributeError as e:
-            print(f"Error accessing LLMAnalysisResult attributes: {e}")
-            # Handle case where llm_response doesn't have expected attributes
-
-        # Update or create ProcessedUserProfile in the DB
-        if new_summary is not None and new_metadata_json_str is not None:
-            if existing_profile:
-                existing_profile.summary_text = new_summary
-                existing_profile.metadata_json = new_metadata_json_str # SQLAlchemy's JSONB handles string
-                # last_updated_timestamp should be auto-updated by onupdate=func.now()
-                db.add(existing_profile) # Ensure SQLAlchemy tracks changes
-            else:
-                new_db_profile = ProcessedUserProfile(
-                    user_id=user_id,
-                    summary_text=new_summary,
-                    metadata_json=new_metadata_json_str
-                    # last_updated_timestamp will be set by server_default for new entries
-                )
-                db.add(new_db_profile)
-            
-            try:
-                db.commit()
-            except Exception as e:
-                db.rollback()
-                raise DatabaseOperationError(
-                    message="Failed to update user profile in database",
-                    operation="update",
-                    table_name="processed_user_profiles",
-                    original_exception=e
-                )
-        else:
-            print(f"Could not extract summary or metadata from LLM response. Response: {llm_response}")
-            # Optionally, log this error more formally
-
-        # 3) Return the user_synthesized_data from step 1 (data before this update)
-        responseString = f"User's Metadata: \n {user_synthesized_data['metadata_json']}\n User's Profile Summary: \n\n {user_synthesized_data['summary_text']}\n"
         return responseString
+
+    def _update_profile_background(
+        self,
+        user_id: uuid.UUID,
+        prompt: str,
+        existing_metadata_json_str: str,
+        existing_summary_text: str,
+    ) -> None:
+        """Synthesize and store the updated user profile asynchronously."""
+
+        db = SessionLocal()
+        try:
+            user_messages_str = f"Timestamp: {datetime.now(timezone.utc).isoformat()}\nUser: {prompt}"
+
+            llm_response = get_llm_profile_synthesis(
+                user_messages_str=user_messages_str,
+                existing_metadata_json_str=existing_metadata_json_str,
+                existing_summary_text=existing_summary_text,
+            )
+
+            new_summary = None
+            new_metadata_json_str = None
+
+            try:
+                new_summary = llm_response.user_profile_summary.strip()
+                raw_metadata_str = llm_response.user_profile_metadata.strip()
+                json.loads(raw_metadata_str)
+                new_metadata_json_str = raw_metadata_str
+            except json.JSONDecodeError:
+                print(f"Error decoding metadata JSON from LLM response: {raw_metadata_str}")
+                new_metadata_json_str = "{}"
+            except AttributeError as e:
+                print(f"Error accessing LLMAnalysisResult attributes: {e}")
+
+            if new_summary is not None and new_metadata_json_str is not None:
+                stmt = select(ProcessedUserProfile).where(ProcessedUserProfile.user_id == user_id)
+                profile = db.execute(stmt).scalars().first()
+                if profile:
+                    profile.summary_text = new_summary
+                    profile.metadata_json = new_metadata_json_str
+                    db.add(profile)
+                else:
+                    profile = ProcessedUserProfile(
+                        user_id=user_id,
+                        summary_text=new_summary,
+                        metadata_json=new_metadata_json_str,
+                    )
+                    db.add(profile)
+                try:
+                    db.commit()
+                except Exception as e:
+                    db.rollback()
+                    print(f"Failed to update user profile asynchronously: {e}")
+            else:
+                print(f"Could not extract summary or metadata from LLM response. Response: {llm_response}")
+        finally:
+            db.close()
