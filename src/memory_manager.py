@@ -9,6 +9,7 @@ from src.db.database import get_db
 from src.db.models import Memory, UserMessage, ProcessedUserProfile
 from sqlalchemy import select
 from src.nlp.synthesize_user_profile import get_llm_profile_synthesis
+from src.core.context import get_current_user_id
 
 class MemoryManager:
     def __init__(
@@ -57,6 +58,13 @@ class MemoryManager:
 
     def store(self, content: str, tags: list[str] | None = None) -> str:
         """Stores a new memory entry in Qdrant and PostgreSQL."""
+        from src.core.context import get_current_user_id
+        
+        # Get the current user_id from async context
+        user_id = get_current_user_id()
+        if user_id is None:
+            raise ValueError("No user_id found in context")
+        
         # Generate a UUID to use in both databases
         memory_id = str(uuid.uuid4())
         
@@ -65,7 +73,8 @@ class MemoryManager:
         payload = {
             "content": content,
             "tags": tags or [],
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "user_id": str(user_id)  # Include user_id in Qdrant payload
         }
         point = PointStruct(
             id=memory_id,
@@ -83,48 +92,40 @@ class MemoryManager:
             id=uuid.UUID(memory_id),
             content=content,
             tags=tags or [],
-            timestamp=datetime.now(timezone.utc)
+            user_id=user_id  # Associate memory with user
         )
         db.add(db_memory)
         db.commit()
         
-        return f"Memory stored with ID: {memory_id}"
+        return f"Memory stored with ID: {memory_id} for user: {user_id}"
 
-    def retrieve_all(self) -> list[dict]:
-        """Retrieves all stored memories from Qdrant."""
-        all_points = []
-        offset = None
-        limit = 1000
-
-        while True:
-            records, next_page_offset = self.client.scroll(
-                collection_name=self.collection_name,
-                limit=limit,
-                offset=offset
-            )
-            all_points.extend(records)
-            if next_page_offset is None:
-                break
-            offset = next_page_offset
-
-        memories = []
-        for point in all_points:
-            payload = point.payload or {}
-            memories.append({
-                "id": point.id,
-                "content": payload.get("content"),
-                "tags": payload.get("tags"),
-                "timestamp": payload.get("timestamp")
-            })
-        return memories
 
     def search_related(self, query_text: str) -> list[dict]:
-        """Performs a semantic search in Qdrant for memories related to the query text, filtered by score threshold."""
+        """Performs a semantic search in Qdrant for memories related to the query text, filtered by score threshold and user_id."""
+        from src.core.context import get_current_user_id
+        from qdrant_client.models import Filter, FieldCondition, MatchValue
+        
+        # Get the current user_id from async context
+        user_id = get_current_user_id()
+        if user_id is None:
+            raise ValueError("No user_id found in context")
+        
         query_embedding = self._embed(query_text)
+
+        # Create filter to only search memories for the current user
+        user_filter = Filter(
+            must=[
+                FieldCondition(
+                    key="user_id",
+                    match=MatchValue(value=str(user_id))
+                )
+            ]
+        )
 
         search_result = self.client.search(
             collection_name=self.collection_name,
             query_vector=query_embedding,
+            query_filter=user_filter,  # Filter by user_id
             score_threshold=self.score_threshold,
             limit=25,
             with_payload=True
@@ -142,7 +143,8 @@ class MemoryManager:
                 "content": payload.get("content"),
                 "tags": payload.get("tags"),
                 "score": hit.score,
-                "timestamp": payload.get("timestamp")
+                "timestamp": payload.get("timestamp"),
+                "user_id": payload.get("user_id")
             })
         return results
 
@@ -151,22 +153,22 @@ class MemoryManager:
         Saves the user message to the database, synthesizes a user profile based on the message,
         and returns the synthesized profile.
         """
-        # For now, using a placeholder user_id. This should be updated
-        # once user authentication / identification is in place.
-        placeholder_user_id = uuid.UUID("00000000-0000-0000-0000-000000000000")
+        # Get the current user_id from async context
+        user_id = get_current_user_id()
+        if user_id is None:
+            raise ValueError("No user_id found in context")
 
         db = get_db()
         db_user_message = UserMessage(
-            user_id=placeholder_user_id,
-            message=prompt,
-            timestamp=datetime.now(timezone.utc)
+            user_id=user_id,
+            message_content=prompt
         )
         db.add(db_user_message)
         db.commit()
 
         # 1) Get user's metadata, summary text, and last_updated_timestamp
         user_synthesized_data = None
-        stmt = select(ProcessedUserProfile).where(ProcessedUserProfile.user_id == placeholder_user_id)
+        stmt = select(ProcessedUserProfile).where(ProcessedUserProfile.user_id == user_id)
         existing_profile = db.execute(stmt).scalars().first()
 
         existing_metadata_json_str = ""
@@ -176,7 +178,7 @@ class MemoryManager:
         if existing_profile:
             existing_metadata_json_str = existing_profile.metadata_json if existing_profile.metadata_json else ""
             existing_summary_text = existing_profile.summary_text if existing_profile.summary_text else ""
-            last_updated_timestamp_iso = existing_profile.last_updated_timestamp.isoformat()
+            last_updated_timestamp_iso = existing_profile.updated_at.isoformat()
             user_synthesized_data = {
                 "metadata_json": existing_metadata_json_str,
                 "summary_text": existing_summary_text,
@@ -228,7 +230,7 @@ class MemoryManager:
                 db.add(existing_profile) # Ensure SQLAlchemy tracks changes
             else:
                 new_db_profile = ProcessedUserProfile(
-                    user_id=placeholder_user_id,
+                    user_id=user_id,
                     summary_text=new_summary,
                     metadata_json=new_metadata_json_str
                     # last_updated_timestamp will be set by server_default for new entries

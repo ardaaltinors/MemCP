@@ -4,8 +4,10 @@ from datetime import datetime
 from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
+from starlette.middleware import Middleware
 from src.memory_manager import MemoryManager
 from src.db import init_db
+from src.middlewares import UserCredentialMiddleware
 
 
 # Initialize the database
@@ -13,12 +15,6 @@ init_db()
 
 mcp = FastMCP("Memory MCP Server")
 memory_manager = MemoryManager()
-
-@mcp.tool()
-def retrieve_memories() -> list[dict]:
-    """Retrieves all stored memories."""
-    return memory_manager.retrieve_all()
-
 
 @mcp.tool()
 def remember_fact(content: str, tags: list[str] | None = None) -> str:
@@ -67,3 +63,12 @@ def get_related_memory(query: str) -> list[dict]:
 @mcp.custom_route("/health", methods=["GET"])
 async def health_check(request: Request) -> PlainTextResponse:
     return PlainTextResponse("OK")
+
+
+# Create the ASGI app with middleware
+mcp_app = mcp.http_app(
+    path="/mcp",
+    middleware=[
+        Middleware(UserCredentialMiddleware)
+    ]
+)
