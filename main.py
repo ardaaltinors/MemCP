@@ -10,9 +10,12 @@ from contextlib import asynccontextmanager
 from src.mcp import mcp_app
 from src.db.database import engine
 from src.routers import auth
+from src.core.config import MCP_SERVER_HOST, MCP_SERVER_PORT
 from qdrant_client import QdrantClient
 from sqlalchemy import text
 import os
+from src.exceptions import MemoryMCPException, ServiceUnavailableError
+from src.exceptions.handlers import handle_memory_mcp_exception
 
 # Configure logging
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper(), 
@@ -24,8 +27,8 @@ def run_mcp_server():
     try:
         uvicorn.run(
             mcp_app,
-            host="127.0.0.1",
-            port=4200,  # MCP server port
+            host=MCP_SERVER_HOST,
+            port=MCP_SERVER_PORT,
             log_level="debug",
         )
     except Exception as e:
@@ -44,10 +47,12 @@ async def lifespan(app: FastAPI):
     mcp_thread.start()
     logger.info("MCP server has been initiated in a background thread.")
     yield
-    # Cleanup code would go here if needed
     logger.info("FastAPI application shutting down...")
 
 app = FastAPI(lifespan=lifespan)
+
+# Add exception handlers
+app.add_exception_handler(MemoryMCPException, handle_memory_mcp_exception)
 
 # Include the authentication router
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
@@ -104,7 +109,10 @@ async def health_check():
         status["services"]["qdrant"]["status"] == "unhealthy"):
         status["status"] = "unhealthy"
         # If both are unhealthy, raise 503 immediately
-        raise HTTPException(status_code=503, detail=status) 
+        raise ServiceUnavailableError(
+            message="All critical services are unavailable",
+            service_name="postgres,qdrant"
+        ) 
     elif (status["services"]["postgres"]["status"] == "unhealthy" or 
           status["services"]["qdrant"]["status"] == "unhealthy"):
         status["status"] = "degraded"
@@ -113,4 +121,4 @@ async def health_check():
     return status
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host=MCP_SERVER_HOST, port=8000)
