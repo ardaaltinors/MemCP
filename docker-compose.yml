@@ -1,0 +1,206 @@
+# =============================================================================
+# Docker Compose for Memory MCP Server
+# Includes PostgreSQL database and Qdrant vector store
+# =============================================================================
+services:
+  # =============================================================================
+  # Memory MCP Application Server
+  # =============================================================================
+  memory-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: memory-mcp-server
+    restart: unless-stopped
+    
+    # Resource constraints
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Environment variables
+    environment:
+      - PYTHONPATH=/app
+      - ENVIRONMENT=production
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # Database Configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-memory_mcp}
+      - DB_USER=${DB_USER:-memory_user}
+      - DB_PASSWORD=${DB_PASSWORD}
+      # MCP Server Configuration
+      - MCP_SERVER_HOST=0.0.0.0
+      - MCP_SERVER_PORT=${MCP_SERVER_PORT:-4200}
+      - API_SERVER_PORT=${API_SERVER_PORT:-8000}
+      - MCP_BASE_URL=${MCP_BASE_URL:-http://localhost:4200}
+      # Qdrant Configuration
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - QDRANT_COLLECTION_NAME=${QDRANT_COLLECTION_NAME:-memories}
+      # AI Services
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY}
+      - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-true}
+      - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT:-memory_mcp}
+      # Authentication
+      - AUTH_SECRET_KEY=${AUTH_SECRET_KEY}
+      - AUTH_ACCESS_TOKEN_EXPIRE_MINUTES=${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-120}
+      # Memory Configuration
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+      - MEMORY_SCORE_THRESHOLD=${MEMORY_SCORE_THRESHOLD:-0.40}
+      - MEMORY_UPPER_SCORE_THRESHOLD=${MEMORY_UPPER_SCORE_THRESHOLD:-0.98}
+    
+    # Port mapping
+    ports:
+      - "${API_SERVER_PORT:-8000}:8000"
+      - "${MCP_SERVER_PORT:-4200}:4200"
+    
+    # Health check - check if ports are responding using bash
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/localhost/8000' && timeout 3 bash -c '</dev/tcp/localhost/4200' || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 40s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Dependencies
+    depends_on:
+      - postgres
+      - qdrant
+    
+    # Networks
+    networks:
+      - memory-mcp-network
+
+  # =============================================================================
+  # PostgreSQL Database
+  # =============================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: memory-mcp-postgres
+    restart: unless-stopped
+    
+    # Resource constraints
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    
+    # Port mapping - expose to host for external connections (DBeaver, etc.)
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    
+    # Environment variables
+    environment:
+      POSTGRES_DB: ${DB_NAME:-memory_mcp}
+      POSTGRES_USER: ${DB_USER:-memory_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    
+    # Volumes
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    
+    # Health check
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memory_user} -d ${POSTGRES_DB:-memory_mcp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Networks
+    networks:
+      - memory-mcp-network
+
+  # =============================================================================
+  # Qdrant Vector Database
+  # =============================================================================
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: memory-mcp-qdrant
+    restart: unless-stopped
+    
+    # Resource constraints
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    
+    # Port mapping
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+      - "6334:6334"  # Web UI
+    
+    # Volumes
+    volumes:
+      - qdrant_data:/qdrant/storage
+    
+    # Health check - using bash tcp socket check
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/localhost/6333' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Networks
+    networks:
+      - memory-mcp-network
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  memory-mcp-network:
+    driver: bridge
+    name: memory-mcp-network
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+    name: memory-mcp-postgres-data
+  
+  qdrant_data:
+    driver: local
+    name: memory-mcp-qdrant-data 

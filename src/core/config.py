@@ -68,6 +68,69 @@ if not MCP_BASE_URL or MCP_BASE_URL.strip() == "":
         expected_type="string"
     )
 
+# Database Configuration
+# Validate individual database credentials and build connection string
+
+# Database Host
+DB_HOST = os.getenv("DB_HOST", "localhost")
+if not DB_HOST or DB_HOST.strip() == "":
+    raise ConfigurationError(
+        message="Database host is required. Please set DB_HOST environment variable.",
+        config_key="DB_HOST",
+        expected_type="string"
+    )
+
+# Database Port
+DB_PORT_STR = os.getenv("DB_PORT", "5432")
+if not DB_PORT_STR or DB_PORT_STR.strip() == "":
+    raise ConfigurationError(
+        message="Database port is required. Please set DB_PORT environment variable.",
+        config_key="DB_PORT",
+        expected_type="integer"
+    )
+
+try:
+    DB_PORT = int(DB_PORT_STR.strip())
+    if not (1 <= DB_PORT <= 65535):
+        raise ValueError("Port must be between 1 and 65535")
+except ValueError as e:
+    raise ConfigurationError(
+        message=f"Database port must be a valid integer between 1-65535. Got: {DB_PORT_STR}",
+        config_key="DB_PORT",
+        expected_type="integer",
+        actual_value=DB_PORT_STR
+    )
+
+# Database Name
+DB_NAME = os.getenv("DB_NAME")
+if not DB_NAME or DB_NAME.strip() == "":
+    raise ConfigurationError(
+        message="Database name is required. Please set DB_NAME environment variable.",
+        config_key="DB_NAME",
+        expected_type="string"
+    )
+
+# Database User
+DB_USER = os.getenv("DB_USER")
+if not DB_USER or DB_USER.strip() == "":
+    raise ConfigurationError(
+        message="Database user is required. Please set DB_USER environment variable.",
+        config_key="DB_USER",
+        expected_type="string"
+    )
+
+# Database Password
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+if not DB_PASSWORD or DB_PASSWORD.strip() == "":
+    raise ConfigurationError(
+        message="Database password is required. Please set DB_PASSWORD environment variable.",
+        config_key="DB_PASSWORD",
+        expected_type="string"
+    )
+
+# Build Database Connection URL
+DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
 def get_mcp_connection_url(api_key: str) -> str:
     """
     Generate the private MCP connection URL for a given API key.

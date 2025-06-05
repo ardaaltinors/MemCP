@@ -33,7 +33,22 @@ target_metadata = Base.metadata
 # ... etc.
 
 def get_url():
-    return os.getenv("DB_CONNECTION_URL")
+    # Use the DATABASE_URL from our config.py which builds the connection string
+    try:
+        from src.core.config import DATABASE_URL
+        return DATABASE_URL
+    except ImportError:
+        # Fallback for cases where config is not available
+        db_host = os.getenv("DB_HOST", "localhost")
+        db_port = os.getenv("DB_PORT", "5432")
+        db_name = os.getenv("DB_NAME", "memory_mcp")
+        db_user = os.getenv("DB_USER", "memory_user")
+        db_password = os.getenv("DB_PASSWORD")
+        
+        if not db_password:
+            raise ValueError("DB_PASSWORD environment variable is required")
+        
+        return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
