@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 
 from src.core import security
+from src.core.config import get_mcp_connection_url
 from src.crud import crud_user
 from src.db.database import get_db
 from src.db.models.user import User as DBUser
@@ -142,6 +143,30 @@ async def revoke_api_key(current_user: DBUser = Depends(get_current_active_user)
             record_id=str(current_user.id)
         )
     return {"message": "API key revoked successfully"}
+
+@router.get("/users/me/connection-url", response_model=user_schema.ConnectionUrlResponse, tags=["API Keys"])
+async def get_private_connection_url(current_user: DBUser = Depends(get_current_active_user)):
+    """
+    Get the private MCP connection URL for the current user.
+    
+    This URL can be used to connect to the MCP server using the user's API key.
+    The user must have an API key created before calling this endpoint.
+    """
+    if not crud_user.has_api_key(current_user):
+        raise RecordNotFoundError(
+            message="No API key found for this user. Create an API key first.",
+            table_name="users",
+            record_id=str(current_user.id)
+        )
+    
+    # Construct the private connection URL using configuration
+    connection_url = get_mcp_connection_url(current_user.api_key)
+    
+    return {
+        "connection_url": connection_url,
+        "api_key": current_user.api_key,
+        "created_at": current_user.api_key_created_at
+    }
 
 # Example endpoint that can be accessed with API key
 @router.get("/users/me/profile", response_model=user_schema.User, tags=["Users"])
