@@ -17,12 +17,6 @@ mcp = FastMCP("Memory MCP Server")
 memory_manager = MemoryManager()
 
 @mcp.tool()
-def retrieve_memories() -> list[dict]:
-    """Retrieves all stored memories."""
-    return memory_manager.retrieve_all()
-
-
-@mcp.tool()
 def remember_fact(content: str, tags: list[str] | None = None) -> str:
     """
     Store a specific fact or piece of information that should be remembered for future conversations.
