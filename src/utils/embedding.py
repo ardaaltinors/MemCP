@@ -1,5 +1,5 @@
 import os
-from openai import OpenAI
+from openai import AsyncOpenAI
 from src.exceptions import ConfigurationError, EmbeddingError
 
 
@@ -17,17 +17,19 @@ class EmbeddingService:
                 config_key="OPENAI_API_KEY",
                 expected_type="string"
             )
-        self.openai_client = OpenAI(api_key=api_key)
+        
+        # Use async client for better concurrency
+        self.openai_client = AsyncOpenAI(api_key=api_key)
 
     def get_embedding_dimension(self) -> int:
         """Get the dimension size for the current embedding model."""
         # text-embedding-3-small produces 1536-dimensional vectors
         return 1536
 
-    def generate_embedding(self, content: str) -> list[float]:
-        """Generate embedding for the given text content."""
+    async def generate_embedding(self, content: str) -> list[float]:
+        """Generate embedding for the given text content (asynchronous)."""
         try:
-            resp = self.openai_client.embeddings.create(
+            resp = await self.openai_client.embeddings.create(
                 input=[content],
                 model=self.embedding_model
             )
