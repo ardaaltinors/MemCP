@@ -18,7 +18,6 @@ class EmbeddingService:
                 expected_type="string"
             )
         
-        # Use async client for better concurrency
         self.openai_client = AsyncOpenAI(api_key=api_key)
 
     def get_embedding_dimension(self) -> int:
