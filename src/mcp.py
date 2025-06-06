@@ -7,6 +7,7 @@ from starlette.responses import PlainTextResponse
 from starlette.middleware import Middleware
 from src.memory_manager import MemoryManager
 from src.db import init_db
+from src.db.database import SessionLocal
 from src.middlewares import UserCredentialMiddleware
 
 
@@ -28,7 +29,9 @@ def remember_fact(content: str, tags: list[str] | None = None) -> str:
         content: The content or fact to be remembered.
         tags: Optional tags to help categorize the memory.
     """
-    return memory_manager.store(content, tags)
+    # Use a proper context manager for database session
+    with SessionLocal() as db:
+        return memory_manager.store(content, db, tags)
 
 
 @mcp.tool()

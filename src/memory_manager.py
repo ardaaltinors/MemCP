@@ -1,8 +1,8 @@
 import uuid
 from typing import Optional
+from sqlalchemy.orm import Session
 
 from src.core.context import get_current_user_id
-from src.db.database import get_db
 from src.db.models import Memory
 from src.exceptions import UserContextError, DatabaseOperationError
 from src.utils.vector_store import VectorStore
@@ -16,7 +16,6 @@ class MemoryManager:
         host: str = None,
         port: int = None,
         collection_name: str = None,
-        embedding_model: str = None,
         score_threshold: float = None,
         upper_score_threshold: float = None
     ):
@@ -29,8 +28,15 @@ class MemoryManager:
             upper_score_threshold=upper_score_threshold
         )
 
-    def store(self, content: str, tags: Optional[list[str]] = None) -> str:
-        """Stores a new memory entry in both vector and relational databases."""
+    def store(self, content: str, db: Session, tags: Optional[list[str]] = None) -> str:
+        """
+        Stores a new memory entry in both vector and relational databases.
+        
+        Args:
+            content: The content to store
+            db: Database session (injected via FastAPI dependency)
+            tags: Optional tags for the memory
+        """
         # Get current user context
         user_id = get_current_user_id()
         if user_id is None:
@@ -42,12 +48,11 @@ class MemoryManager:
         # Generate a UUID for this memory
         memory_id = str(uuid.uuid4())
         
-        # Store in vector database
+        # Store in vector database first
         self.vector_store.store_memory(memory_id, content, user_id, tags)
         
         # Store in relational database
         try:
-            db = get_db()
             db_memory = Memory(
                 id=uuid.UUID(memory_id),
                 content=content,
@@ -57,6 +62,8 @@ class MemoryManager:
             db.add(db_memory)
             db.commit()
         except Exception as e:
+            # If relational DB fails, we should ideally remove from vector DB too
+            # This is part of the data consistency issue mentioned in IMPLEMENTATION_ISSUES.md
             raise DatabaseOperationError(
                 message="Failed to store memory in relational database",
                 operation="insert",
