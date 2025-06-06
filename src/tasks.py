@@ -3,7 +3,7 @@ import json
 from datetime import datetime, timezone
 from sqlalchemy import select
 from src.celery_app import celery_app
-from src.db.database import SessionLocal
+from src.db.database import SyncSessionLocal
 from src.db.models import ProcessedUserProfile
 from src.nlp.synthesize_user_profile import get_llm_profile_synthesis
 
@@ -18,7 +18,7 @@ def update_profile_background(
     Celery task to synthesize and store the updated user profile asynchronously.
     """
     user_id = uuid.UUID(user_id_str)
-    db = SessionLocal()
+    db = SyncSessionLocal()
     try:
         user_messages_str = f"Timestamp: {datetime.now(timezone.utc).isoformat()}\\nUser: {prompt}"
 

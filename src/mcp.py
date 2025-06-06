@@ -7,7 +7,7 @@ from starlette.responses import PlainTextResponse
 from starlette.middleware import Middleware
 from src.memory_manager import MemoryManager
 from src.db import init_db
-from src.db.database import SessionLocal
+from src.db.database import AsyncSessionLocal
 from src.middlewares import UserCredentialMiddleware
 
 
@@ -18,7 +18,7 @@ mcp = FastMCP("Memory MCP Server")
 memory_manager = MemoryManager()
 
 @mcp.tool()
-def remember_fact(content: str, tags: list[str] | None = None) -> str:
+async def remember_fact(content: str, tags: list[str] | None = None) -> str:
     """
     Store a specific fact or piece of information that should be remembered for future conversations.
     
@@ -29,13 +29,12 @@ def remember_fact(content: str, tags: list[str] | None = None) -> str:
         content: The content or fact to be remembered.
         tags: Optional tags to help categorize the memory.
     """
-    # Use a proper context manager for database session
-    with SessionLocal() as db:
-        return memory_manager.store(content, db, tags)
+    async with AsyncSessionLocal() as db:
+        return await memory_manager.store(content, db, tags)
 
 
 @mcp.tool()
-def record_and_get_context(prompt: str) -> str:
+async def record_and_get_context(prompt: str) -> str:
     """
     You MUST call this tool every single time the user sends a message, regardless of its importance.
     This ensures that all interactions are recorded as context for future reasoning.
@@ -43,13 +42,13 @@ def record_and_get_context(prompt: str) -> str:
     Args:
         prompt: The user's raw input message.
     """
-    llm_response = memory_manager.process_context(prompt)
+    llm_response = await memory_manager.process_context(prompt)
     string = f"User's Profile Summary: {llm_response}\n\n Use this summary to understand the user's profile and preferences.\n Do NOT call this tool again until the user sends a new message."
     return string
 
 
 @mcp.tool()
-def get_related_memory(query: str) -> list[dict]:
+async def get_related_memory(query: str) -> list[dict]:
     """
     Performs a semantic search to find memories related to the given query text.
     Call this tool when the user asks 'what do I know about X?', 'find memories related to Y',
@@ -60,7 +59,7 @@ def get_related_memory(query: str) -> list[dict]:
     Args:
         query: The text to search for related memories.
     """
-    return memory_manager.search_related(query_text=query)
+    return await memory_manager.search_related(query_text=query)
 
 
 @mcp.custom_route("/health", methods=["GET"])

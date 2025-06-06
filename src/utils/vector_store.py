@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from qdrant_client import QdrantClient
+from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import VectorParams, Distance, PointStruct, Filter, FieldCondition, MatchValue
 
 from src.exceptions import QdrantServiceError, MemorySearchError
@@ -21,21 +21,27 @@ class VectorStore:
         score_threshold: float = None,
         upper_score_threshold: float = None
     ):
-        # Read configuration from environment variables with fallbacks
         self.host = host or os.getenv("QDRANT_HOST", "localhost")
         self.port = port or int(os.getenv("QDRANT_PORT", "6333"))
         self.collection_name = collection_name or os.getenv("QDRANT_COLLECTION_NAME", "memories")
         
-        # Convert string environment variables to floats with fallbacks
         self.score_threshold = score_threshold if score_threshold is not None else float(os.getenv("MEMORY_SCORE_THRESHOLD", "0.40"))
         self.upper_score_threshold = upper_score_threshold if upper_score_threshold is not None else float(os.getenv("MEMORY_UPPER_SCORE_THRESHOLD", "0.98"))
+        
+        self.timeout = float(os.getenv("QDRANT_TIMEOUT", "60"))
+        self.prefer_grpc = os.getenv("QDRANT_PREFER_GRPC", "false").lower() == "true"
         
         # Initialize services
         self.embedding_service = EmbeddingService()
         
         # Initialize Qdrant client
         try:
-            self.client = QdrantClient(host=self.host, port=self.port)
+            self.client = AsyncQdrantClient(
+                host=self.host, 
+                port=self.port,
+                timeout=self.timeout,
+                prefer_grpc=self.prefer_grpc
+            )
         except Exception as e:
             raise QdrantServiceError(
                 message="Failed to connect to Qdrant database",
@@ -43,23 +49,28 @@ class VectorStore:
                 collection_name=self.collection_name,
                 original_exception=e
             )
-        
-        # Ensure the collection exists in Qdrant
-        self._ensure_collection_exists()
 
-    def _ensure_collection_exists(self):
+    async def _ensure_collection_exists(self):
         """Create the collection if it doesn't exist."""
-        existing = [c.name for c in self.client.get_collections().collections]
-        if self.collection_name not in existing:
-            self.client.create_collection(
-                collection_name=self.collection_name,
-                vectors_config=VectorParams(
-                    size=self.embedding_service.get_embedding_dimension(),
-                    distance=Distance.COSINE
+        try:
+            collection_exists = await self.client.collection_exists(self.collection_name)
+            if not collection_exists:
+                await self.client.create_collection(
+                    collection_name=self.collection_name,
+                    vectors_config=VectorParams(
+                        size=self.embedding_service.get_embedding_dimension(),
+                        distance=Distance.COSINE
+                    )
                 )
+        except Exception as e:
+            raise QdrantServiceError(
+                message="Failed to create collection in Qdrant database",
+                operation="create_collection",
+                collection_name=self.collection_name,
+                original_exception=e
             )
 
-    def store_memory(
+    async def store_memory(
         self, 
         memory_id: str, 
         content: str, 
@@ -68,7 +79,11 @@ class VectorStore:
     ) -> None:
         """Store a memory in the vector database."""
         try:
-            vector = self.embedding_service.generate_embedding(content)
+            # Ensure collection exists
+            await self._ensure_collection_exists()
+            
+            vector = await self.embedding_service.generate_embedding(content)
+            
             payload = {
                 "content": content,
                 "tags": tags or [],
@@ -80,9 +95,11 @@ class VectorStore:
                 vector=vector,
                 payload=payload
             )
-            self.client.upsert(
+            
+            await self.client.upsert(
                 collection_name=self.collection_name,
-                points=[point]
+                points=[point],
+                wait=True  # Ensure the operation completes
             )
         except Exception as e:
             raise QdrantServiceError(
@@ -92,22 +109,26 @@ class VectorStore:
                 original_exception=e
             )
 
-    def search_memories(self, query_text: str, user_id: uuid.UUID) -> list[dict]:
+    async def search_memories(self, query_text: str, user_id: uuid.UUID) -> list[dict]:
         """Search for memories related to the query text, filtered by user."""
-        query_embedding = self.embedding_service.generate_embedding(query_text)
-
-        # Create filter to only search memories for the current user
-        user_filter = Filter(
-            must=[
-                FieldCondition(
-                    key="user_id",
-                    match=MatchValue(value=str(user_id))
-                )
-            ]
-        )
-
         try:
-            search_result = self.client.search(
+            await self._ensure_collection_exists()
+            
+            # Use async embedding generation for better concurrency
+            query_embedding = await self.embedding_service.generate_embedding(query_text)
+
+            # Create filter to only search memories for the current user
+            user_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="user_id",
+                        match=MatchValue(value=str(user_id))
+                    )
+                ]
+            )
+
+            # Use async Qdrant search for better concurrency
+            search_result = await self.client.search(
                 collection_name=self.collection_name,
                 query_vector=query_embedding,
                 query_filter=user_filter,
@@ -139,4 +160,12 @@ class VectorStore:
                 "timestamp": payload.get("timestamp"),
                 "user_id": payload.get("user_id")
             })
-        return results 
+        return results
+
+    async def close(self):
+        """Close the async client connection."""
+        try:
+            await self.client.close()
+        except Exception as e:
+            # Log the error but don't raise as this is cleanup
+            pass 

@@ -129,6 +129,7 @@ if not DB_PASSWORD or DB_PASSWORD.strip() == "":
     )
 
 # Build Database Connection URL
+ASYNC_DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 def get_mcp_connection_url(api_key: str) -> str:

@@ -2,8 +2,9 @@ import uuid
 import json
 from datetime import datetime, timezone
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db.database import SessionLocal
+from src.db.database import AsyncSessionLocal
 from src.db.models import UserMessage, ProcessedUserProfile
 from src.nlp.synthesize_user_profile import get_llm_profile_synthesis
 from src.exceptions import UserContextError
@@ -14,18 +15,18 @@ class ProfileProcessor:
     """Service for processing user profiles and messages."""
     
     @staticmethod
-    def record_message_and_get_profile(user_id: uuid.UUID, prompt: str) -> str:
+    async def record_message_and_get_profile(user_id: uuid.UUID, prompt: str) -> str:
         """Record the user's message and return the current synthesized profile."""
-        db = SessionLocal()
-        try:
+        async with AsyncSessionLocal() as db:
             # Record the user message
             db_user_message = UserMessage(user_id=user_id, message_content=prompt)
             db.add(db_user_message)
-            db.commit()
+            await db.flush()
 
             # Get existing profile
             stmt = select(ProcessedUserProfile).where(ProcessedUserProfile.user_id == user_id)
-            existing_profile = db.execute(stmt).scalars().first()
+            result = await db.execute(stmt)
+            existing_profile = result.scalars().first()
 
             existing_metadata_json_str = ""
             existing_summary_text = ""
@@ -54,5 +55,3 @@ class ProfileProcessor:
                 f"User's Metadata: \\n {user_synthesized_data['metadata_json']}\\n "
                 f"User's Profile Summary: \\n\\n {user_synthesized_data['summary_text']}\\n"
             )
-        finally:
-            db.close()
