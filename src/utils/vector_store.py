@@ -1,5 +1,6 @@
 import os
 import uuid
+import asyncio
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -59,7 +60,7 @@ class VectorStore:
                 )
             )
 
-    def store_memory(
+    async def store_memory(
         self, 
         memory_id: str, 
         content: str, 
@@ -68,7 +69,10 @@ class VectorStore:
     ) -> None:
         """Store a memory in the vector database."""
         try:
-            vector = self.embedding_service.generate_embedding(content)
+            # Run embedding generation in thread pool to avoid blocking
+            vector = await asyncio.get_event_loop().run_in_executor(
+                None, self.embedding_service.generate_embedding, content
+            )
             payload = {
                 "content": content,
                 "tags": tags or [],
@@ -80,9 +84,13 @@ class VectorStore:
                 vector=vector,
                 payload=payload
             )
-            self.client.upsert(
-                collection_name=self.collection_name,
-                points=[point]
+            # Run Qdrant upsert in thread pool to avoid blocking
+            await asyncio.get_event_loop().run_in_executor(
+                None, 
+                lambda: self.client.upsert(
+                    collection_name=self.collection_name,
+                    points=[point]
+                )
             )
         except Exception as e:
             raise QdrantServiceError(
@@ -92,9 +100,12 @@ class VectorStore:
                 original_exception=e
             )
 
-    def search_memories(self, query_text: str, user_id: uuid.UUID) -> list[dict]:
+    async def search_memories(self, query_text: str, user_id: uuid.UUID) -> list[dict]:
         """Search for memories related to the query text, filtered by user."""
-        query_embedding = self.embedding_service.generate_embedding(query_text)
+        # Run embedding generation in thread pool to avoid blocking
+        query_embedding = await asyncio.get_event_loop().run_in_executor(
+            None, self.embedding_service.generate_embedding, query_text
+        )
 
         # Create filter to only search memories for the current user
         user_filter = Filter(
@@ -107,13 +118,17 @@ class VectorStore:
         )
 
         try:
-            search_result = self.client.search(
-                collection_name=self.collection_name,
-                query_vector=query_embedding,
-                query_filter=user_filter,
-                score_threshold=self.score_threshold,
-                limit=25,
-                with_payload=True
+            # Run Qdrant search in thread pool to avoid blocking
+            search_result = await asyncio.get_event_loop().run_in_executor(
+                None,
+                lambda: self.client.search(
+                    collection_name=self.collection_name,
+                    query_vector=query_embedding,
+                    query_filter=user_filter,
+                    score_threshold=self.score_threshold,
+                    limit=25,
+                    with_payload=True
+                )
             )
         except Exception as e:
             raise MemorySearchError(

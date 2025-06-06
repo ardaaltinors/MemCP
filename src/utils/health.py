@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from sqlalchemy import text
 from qdrant_client import QdrantClient
 import redis
-from src.db.database import engine
+from src.db.database import sync_engine
 from src.exceptions import ServiceUnavailableError
 
 logger = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 def check_postgres_health() -> Dict[str, Any]:
     """Check PostgreSQL database health."""
     try:
-        with engine.connect() as connection:
+        with sync_engine.connect() as connection:
             result = connection.execute(text("SELECT 1"))
             result.fetchone()
         return {

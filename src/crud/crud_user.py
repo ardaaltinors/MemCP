@@ -2,25 +2,31 @@ from typing import Optional
 import secrets
 from datetime import datetime, timezone
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.security import get_password_hash, verify_password
 from src.db.models.user import User
 from src.schemas.user import UserCreate, UserUpdate
 
-def get_user(db: Session, user_id: int) -> Optional[User]:
-    return db.query(User).filter(User.id == user_id).first()
+async def get_user(db: AsyncSession, user_id: int) -> Optional[User]:
+    result = await db.execute(select(User).filter(User.id == user_id))
+    return result.scalars().first()
 
-def get_user_by_email(db: Session, email: str) -> Optional[User]:
-    return db.query(User).filter(User.email == email).first()
+async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
+    result = await db.execute(select(User).filter(User.email == email))
+    return result.scalars().first()
 
-def get_user_by_username(db: Session, username: str) -> Optional[User]:
-    return db.query(User).filter(User.username == username).first()
+async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User]:
+    result = await db.execute(select(User).filter(User.username == username))
+    return result.scalars().first()
 
-def get_user_by_api_key(db: Session, api_key: str) -> Optional[User]:
-    return db.query(User).filter(User.api_key == api_key).first()
+async def get_user_by_api_key(db: AsyncSession, api_key: str) -> Optional[User]:
+    result = await db.execute(select(User).filter(User.api_key == api_key))
+    return result.scalars().first()
 
-def create_user(db: Session, user_in: UserCreate) -> User:
+
+async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
     hashed_password = get_password_hash(user_in.password)
     db_user = User(
         email=user_in.email,
@@ -30,11 +36,11 @@ def create_user(db: Session, user_in: UserCreate) -> User:
         is_superuser=user_in.is_superuser
     )
     db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
+    await db.flush()
+    await db.refresh(db_user)
     return db_user
 
-def update_user(db: Session, db_user: User, user_in: UserUpdate) -> User:
+async def update_user(db: AsyncSession, db_user: User, user_in: UserUpdate) -> User:
     update_data = user_in.model_dump(exclude_unset=True) # Use model_dump for Pydantic v2+
     if "password" in update_data and update_data["password"]:
         hashed_password = get_password_hash(update_data["password"])
@@ -45,12 +51,12 @@ def update_user(db: Session, db_user: User, user_in: UserUpdate) -> User:
         setattr(db_user, field, value)
     
     db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
+    await db.flush()
+    await db.refresh(db_user)
     return db_user
 
-def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
-    user = get_user_by_username(db, username=username)
+async def authenticate_user(db: AsyncSession, username: str, password: str) -> Optional[User]:
+    user = await get_user_by_username(db, username=username)
     if not user:
         return None
     if not verify_password(password, user.hashed_password):
@@ -60,7 +66,7 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
 def is_user_active(user: User) -> bool:
     return user.is_active
 
-def create_api_key(db: Session, user: User) -> str:
+async def create_api_key(db: AsyncSession, user: User) -> str:
     """Generate a new API key for the user"""
     # Generate a secure random API key
     api_key = f"sk_{secrets.token_urlsafe(32)}"
@@ -70,20 +76,20 @@ def create_api_key(db: Session, user: User) -> str:
     user.api_key_created_at = datetime.now(timezone.utc)
     
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    await db.flush()
+    await db.refresh(user)
     
     return api_key
 
-def revoke_api_key(db: Session, user: User) -> bool:
+async def revoke_api_key(db: AsyncSession, user: User) -> bool:
     """Revoke the user's API key"""
     if user.api_key:
         user.api_key = None
         user.api_key_created_at = None
         
         db.add(user)
-        db.commit()
-        db.refresh(user)
+        await db.flush()
+        await db.refresh(user)
         return True
     return False
 
