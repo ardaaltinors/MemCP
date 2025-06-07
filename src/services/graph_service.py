@@ -2,6 +2,8 @@ import uuid
 import asyncio
 from typing import List, Dict, Set, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
 from src.crud import crud_memory
 from src.utils.vector_store import VectorStore
@@ -99,70 +101,54 @@ class GraphService:
         threshold: float
     ) -> List[GraphEdge]:
         """
-        Calculate semantic relationships between memories using Qdrant.
-        
-        For each memory, we find its most similar memories and create edges
-        if the similarity is above the threshold.
+        Calculates semantic relationships using a highly efficient, vectorized approach.
         """
+        if len(memories) < 2:
+            return []
+
         edges = []
-        processed_pairs: Set[Tuple[str, str]] = set()
-        
+        memory_ids = [str(m.id) for m in memories]
+
         try:
-            # Create a mapping of memory IDs to content for quick lookup
-            memory_map = {str(memory.id): memory.content for memory in memories}
-            memory_ids = list(memory_map.keys())
+            # Step 1: Fetch all vectors in one batch
+            vectors_dict = await self.vector_store.retrieve_vectors(memory_ids, user_id)
             
-            # For each memory, find its semantic neighbors
-            for memory in memories:
-                memory_id = str(memory.id)
+            # Align vectors with memory_ids, handling cases where a vector might be missing
+            ordered_vectors = [vectors_dict.get(mid) for mid in memory_ids]
+            
+            # Filter out memories that didn't have a vector
+            valid_indices = [i for i, v in enumerate(ordered_vectors) if v is not None]
+            if len(valid_indices) < 2:
+                return []
                 
-                # Search for similar memories using the memory's content
-                similar_memories = await self.vector_store.search_memories(
-                    query_text=memory.content,
-                    user_id=user_id
-                )
-                
-                # Create edges for memories above the similarity threshold
-                for similar_memory in similar_memories:
-                    similar_id = similar_memory["id"]
-                    similarity_score = similar_memory["score"]
-                    
-                    # Skip self-connections
-                    if similar_id == memory_id:
-                        continue
-                    
-                    # Skip if similarity is below threshold
-                    if similarity_score < threshold:
-                        continue
-                    
-                    # Skip if we already processed this pair (avoid duplicates)
-                    pair = tuple(sorted([memory_id, similar_id]))
-                    if pair in processed_pairs:
-                        continue
-                    
-                    # Verify the similar memory belongs to this user's memory set
-                    if similar_id in memory_ids:
+            valid_memory_ids = [memory_ids[i] for i in valid_indices]
+            vector_matrix = np.array([ordered_vectors[i] for i in valid_indices])
+
+            # Step 2: Calculate all-pairs cosine similarity in a single operation
+            similarity_matrix = cosine_similarity(vector_matrix)
+
+            # Step 3: Create edges from the upper triangle of the similarity matrix
+            for i in range(len(valid_memory_ids)):
+                for j in range(i + 1, len(valid_memory_ids)):
+                    similarity_score = similarity_matrix[i, j]
+
+                    if similarity_score >= threshold:
                         edge = GraphEdge(
-                            source=memory_id,
-                            target=similar_id,
+                            source=valid_memory_ids[i],
+                            target=valid_memory_ids[j],
                             type="semantic_similarity",
-                            weight=round(similarity_score, 3)
+                            weight=round(float(similarity_score), 3)
                         )
                         edges.append(edge)
-                        processed_pairs.add(pair)
                         
-                        logger.debug(f"Created edge between {memory_id} and {similar_id} with weight {similarity_score}")
-                
-                # Add a small delay to prevent overwhelming Qdrant
-                await asyncio.sleep(0.01)
-                
         except Exception as e:
-            logger.error(f"Error calculating semantic edges: {str(e)}")
+            logger.error(f"Error calculating semantic edges for user {user_id}: {str(e)}")
+            # Re-raise as a service-specific exception
             raise QdrantServiceError(
                 message="Failed to calculate semantic relationships",
-                operation="calculate_edges",
+                operation="calculate_edges_vectorized",
                 collection_name=self.vector_store.collection_name,
-                original_exception=e
+                original_exception=e,
             )
         
         return edges
