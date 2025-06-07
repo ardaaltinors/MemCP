@@ -52,8 +52,12 @@ app = FastAPI(lifespan=lifespan)
 # Add exception handlers
 app.add_exception_handler(MemoryMCPException, handle_memory_mcp_exception)
 
-# Include the authentication router
+# Include routers
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+
+# Import and include memory router
+from src.routers import memory
+app.include_router(memory.router, prefix="/memories", tags=["Memories"])
 
 @app.get("/")
 async def health_check():
