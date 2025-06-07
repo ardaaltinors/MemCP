@@ -4,11 +4,13 @@ from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.database import get_async_db
-from src.routers.auth import get_current_active_user
+from src.routers.auth import get_current_active_user, get_current_active_superuser
 from src.db.models.user import User as DBUser
 from src.schemas import memory as memory_schema
+from src.schemas.graph import MemoryGraphResponse
 from src.crud import crud_memory
 from src.memory_manager import MemoryManager
+from src.services.graph_service import GraphService
 from src.core.context import set_current_user_id
 
 router = APIRouter()
@@ -47,6 +49,75 @@ async def get_user_memories(
         "per_page": per_page,
         "has_next": skip + per_page < total,
         "has_prev": page > 1
+    }
+
+
+@router.get("/graph", response_model=MemoryGraphResponse, tags=["Memories"])
+async def get_memory_graph(
+    similarity_threshold: float = Query(0.7, ge=0.0, le=1.0, description="Minimum similarity threshold for connecting memories"),
+    current_user: DBUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Get user's memories as a graph structure for visualization.
+    
+    Returns memories as nodes and their semantic relationships as edges.
+    The similarity_threshold parameter controls how similar memories need to be
+    to create a connection (higher values = fewer, stronger connections).
+    
+    This endpoint is designed for frontend graph visualization libraries like:
+    - D3.js
+    - Vis.js  
+    - React Flow
+    - Cytoscape.js
+    """
+    graph_service = GraphService(similarity_threshold=similarity_threshold)
+    
+    try:
+        graph_data = await graph_service.generate_memory_graph(
+            user_id=current_user.id,
+            db=db,
+            similarity_threshold=similarity_threshold
+        )
+        return graph_data
+    
+    finally:
+        # Ensure proper cleanup of resources
+        await graph_service.close()
+
+
+@router.get("/search/semantic", tags=["Memories"])
+async def search_memories(
+    query: str = Query(..., min_length=1, description="Search query"),
+    current_user: DBUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Perform semantic search across user's memories using Qdrant.
+    """
+    # Set user context for memory manager
+    set_current_user_id(current_user.id)
+    
+    # Perform semantic search using Qdrant
+    qdrant_results = await memory_manager.search_related(query)
+    
+    # Enhance results with full memory details from PostgreSQL
+    enhanced_results = []
+    for qdrant_result in qdrant_results:
+        memory_id = uuid.UUID(qdrant_result["id"])
+        memory = await crud_memory.get_memory_by_id(db=db, memory_id=memory_id)
+        
+        if memory:
+            enhanced_results.append({
+                "memory": memory,
+                "similarity_score": qdrant_result["score"],
+                "qdrant_data": qdrant_result
+            })
+    
+    return {
+        "query": query,
+        "results": enhanced_results,
+        "total_results": len(enhanced_results)
     }
 
 
@@ -110,6 +181,79 @@ async def create_memory(
     return memories[0]
 
 
+@router.post("/bulk", response_model=memory_schema.MemoryBulkResponse, status_code=status.HTTP_201_CREATED, tags=["Memories"])
+async def create_bulk_memories(
+    bulk_request: memory_schema.MemoryBulkCreate,
+    current_user: DBUser = Depends(get_current_active_superuser),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Create multiple memories in a single request.
+    
+    This endpoint allows for efficient bulk creation of memories, storing them
+    in both PostgreSQL and Qdrant. The operation continues even if some individual
+    memories fail to be created, returning detailed status for each memory.
+    
+    Maximum of 100 memories can be created per request.
+    """
+    # Set user context for memory manager
+    set_current_user_id(current_user.id)
+    
+    results = []
+    total_created = 0
+    total_failed = 0
+    
+    # Process each memory individually
+    for index, memory_create in enumerate(bulk_request.memories):
+        try:
+            # Store the memory using memory manager
+            result_message = await memory_manager.store(
+                content=memory_create.content,
+                db=db,
+                tags=memory_create.tags
+            )
+            
+            # Get the most recently created memory
+            recent_memories = await crud_memory.get_user_memories(
+                db=db, 
+                user_id=current_user.id, 
+                limit=1
+            )
+            
+            if recent_memories:
+                results.append(memory_schema.BulkMemoryResult(
+                    success=True,
+                    memory=recent_memories[0],
+                    error=None,
+                    index=index
+                ))
+                total_created += 1
+            else:
+                results.append(memory_schema.BulkMemoryResult(
+                    success=False,
+                    memory=None,
+                    error="Memory was created but could not be retrieved",
+                    index=index
+                ))
+                total_failed += 1
+                
+        except Exception as e:
+            results.append(memory_schema.BulkMemoryResult(
+                success=False,
+                memory=None,
+                error=str(e),
+                index=index
+            ))
+            total_failed += 1
+    
+    return memory_schema.MemoryBulkResponse(
+        results=results,
+        total_requested=len(bulk_request.memories),
+        total_created=total_created,
+        total_failed=total_failed
+    )
+
+
 @router.put("/{memory_id}", response_model=memory_schema.Memory, tags=["Memories"])
 async def update_memory(
     memory_id: uuid.UUID,
@@ -168,36 +312,4 @@ async def delete_memory(
     return {"message": result_message}
 
 
-@router.get("/search/semantic", tags=["Memories"])
-async def search_memories(
-    query: str = Query(..., min_length=1, description="Search query"),
-    current_user: DBUser = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_async_db)
-):
-    """
-    Perform semantic search across user's memories using Qdrant.
-    """
-    # Set user context for memory manager
-    set_current_user_id(current_user.id)
-    
-    # Perform semantic search using Qdrant
-    qdrant_results = await memory_manager.search_related(query)
-    
-    # Enhance results with full memory details from PostgreSQL
-    enhanced_results = []
-    for qdrant_result in qdrant_results:
-        memory_id = uuid.UUID(qdrant_result["id"])
-        memory = await crud_memory.get_memory_by_id(db=db, memory_id=memory_id)
-        
-        if memory:
-            enhanced_results.append({
-                "memory": memory,
-                "similarity_score": qdrant_result["score"],
-                "qdrant_data": qdrant_result
-            })
-    
-    return {
-        "query": query,
-        "results": enhanced_results,
-        "total_results": len(enhanced_results)
-    } 
+ 
