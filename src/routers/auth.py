@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 
 from src.core import security
 from src.core.config import get_mcp_connection_url
@@ -59,10 +59,15 @@ async def login_for_access_token(db: AsyncSession = Depends(get_async_db), form_
     if not user:
         raise InvalidCredentialsError(username=form_data.username)
     access_token_expires = timedelta(minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expires_at = datetime.now(timezone.utc) + access_token_expires
     access_token = security.create_access_token(
         subject=user.username, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "expires_at": expires_at
+    }
 
 @router.post("/users/", response_model=user_schema.User, status_code=status.HTTP_201_CREATED, tags=["Users"])
 async def create_user(user_in: user_schema.UserCreate, db: AsyncSession = Depends(get_async_db)):
