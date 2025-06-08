@@ -1,4 +1,5 @@
 import os
+import logging
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -8,6 +9,8 @@ from src.core.context import set_current_user_id
 from src.exceptions import InvalidAPIKeyError, InactiveUserError
 from src.exceptions.handlers import ExceptionHandler
 
+# Configure logger for middleware
+logger = logging.getLogger(__name__)
 
 class UserCredentialMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
@@ -17,11 +20,13 @@ class UserCredentialMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Extract user credential (API key) from path
         path = request.url.path
-        if path.startswith("/mcp/") and len(path) > 5:  # "/mcp/"
-            api_key = path[5:]  # Remove "/mcp/" prefix
+        if path.startswith("/mcp/"):
+            api_key = path.split("/mcp/")[1].split("/")[0] if len(path.split("/mcp/")[1].split("/")) > 0 else None
+            
+            # Remove "/mcp/" prefix and handle health checks
             if api_key and api_key != "health":
                 if self.debug:
-                    print(f"API KEY from path: {api_key}")
+                    logger.debug(f"Processing API key from path: {api_key[:10]}...")
                 
                 # Validate API key against database using event-loop-specific session
                 session_maker = get_async_sessionmaker()
@@ -30,11 +35,11 @@ class UserCredentialMiddleware(BaseHTTPMiddleware):
                     if user:
                         if user.is_active:
                             if self.debug:
-                                print(f"✅ AUTHORIZED USER: {user.username} ({user.email})")
-                                print(f"   - User ID: {user.id}")
-                                print(f"   - Is Superuser: {user.is_superuser}")
-                                print(f"   - API Key Created: {user.api_key_created_at}")
-                                print(f"   - Account Created: {user.created_at}")
+                                logger.debug(
+                                    f"✅ Authorized user: {user.username} (ID: {user.id}, "
+                                    f"Superuser: {user.is_superuser}, "
+                                    f"API Key Created: {user.api_key_created_at})"
+                                )
                             
                             # Store user info in request state for later use
                             request.state.user = user
@@ -42,19 +47,48 @@ class UserCredentialMiddleware(BaseHTTPMiddleware):
                             set_current_user_id(user.id)
                         else:
                             if self.debug:
-                                print(f"❌ INACTIVE USER: {user.username} ({user.email})")
+                                logger.warning(f"❌ Inactive user attempted access: {user.username} ({user.email})")
+                            
                             exception = InactiveUserError(
                                 user_id=str(user.id),
                                 username=user.username
                             )
+                            
+                            # Log the security event
+                            ExceptionHandler.log_exception(
+                                exception=exception,
+                                operation="mcp_auth_middleware",
+                                user_id=str(user.id),
+                                additional_context={
+                                    "path": path,
+                                    "api_key_prefix": api_key[:10] + "..." if len(api_key) > 10 else api_key
+                                }
+                            )
+                            
                             return ExceptionHandler.to_json_response(exception)
                     else:
                         if self.debug:
-                            print(f"❌ INVALID API KEY: {api_key}")
+                            logger.warning(f"❌ Invalid API key attempted: {api_key[:10]}...")
+                        
                         exception = InvalidAPIKeyError(
                             api_key_prefix=api_key[:10] + "..." if len(api_key) > 10 else api_key
                         )
+                        
+                        # Log the security event
+                        ExceptionHandler.log_exception(
+                            exception=exception,
+                            operation="mcp_auth_middleware",
+                            additional_context={
+                                "path": path,
+                                "api_key_prefix": api_key[:10] + "..." if len(api_key) > 10 else api_key
+                            }
+                        )
+                        
                         return ExceptionHandler.to_json_response(exception)
+            else:
+                if self.debug:
+                    logger.debug(f"Health check or no API key required for path: {path}")
         
+        # Continue to the next middleware/route
         response = await call_next(request)
         return response 
