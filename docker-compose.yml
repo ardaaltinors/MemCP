@@ -290,7 +290,8 @@ services:
       dockerfile: Dockerfile
       args:
         - FRONTEND_URL=${FRONTEND_URL:-http://localhost:4321}
-        - BACKEND_URL=http://memory-mcp-server:8000
+        - BACKEND_URL=http://memory-mcp:8000
+        - MCP_URL=http://memory-mcp:4200
     container_name: memory-mcp-frontend
     restart: unless-stopped
     

@@ -7,6 +7,7 @@ import svgr from "vite-plugin-svgr";
 // Use environment variables for production-ready configuration
 export const siteUrl = process.env.FRONTEND_URL || "http://localhost:4321";
 const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
+const mcpUrl = process.env.MCP_URL || "http://localhost:4200";
 
 const date = new Date().toISOString();
 // https://astro.build/config
@@ -53,6 +54,10 @@ export default defineConfig({
                     target: backendUrl,
                     changeOrigin: true,
                     rewrite: (path) => path.replace(/^\/api/, '')
+                },
+                '/mcp': {
+                    target: mcpUrl,
+                    changeOrigin: true
                 }
             }
         },
