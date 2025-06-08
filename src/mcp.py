@@ -31,7 +31,13 @@ async def remember_fact(content: str, tags: list[str] | None = None) -> str:
     """
     session_maker = get_async_sessionmaker()
     async with session_maker() as db:
-        return await memory_manager.store(content, db, tags)
+        try:
+            result = await memory_manager.store(content, db, tags)
+            await db.commit()  # Explicitly commit the transaction
+            return result
+        except Exception as e:
+            await db.rollback()  # Rollback on error
+            raise e
 
 
 @mcp.tool()
