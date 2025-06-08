@@ -1,0 +1,48 @@
+---
+import Layout from "layouts/Layout.astro";
+import { RegisterForm } from "@libs/ui/components/RegisterForm";
+---
+
+<Layout
+    title="Register - MemCP"
+    description="Create your MemCP account to start using portable agent memory across all your AI conversations."
+>
+    <main class="min-h-screen flex items-center justify-center px-4 py-12 pt-32 md:pt-40">
+        <div class="w-full max-w-md">
+            {/* Header */}
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-white mb-2">
+                    Create Account
+                </h1>
+                <p class="text-gray-400">
+                    Join MemCP and connect your AI conversations
+                </p>
+            </div>
+
+            {/* Register Form Card */}
+            <div class="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl p-8 shadow-xl">
+                <RegisterForm client:load />
+            </div>
+
+            {/* Footer */}
+            <div class="text-center mt-6">
+                <p class="text-gray-400 text-sm">
+                    Already have an account?{" "}
+                    <a 
+                        href="/login" 
+                        class="text-purple-400 hover:text-purple-300 transition-colors font-medium"
+                    >
+                        Sign in
+                    </a>
+                </p>
+            </div>
+        </div>
+    </main>
+</Layout>
+
+<style>
+    /* Additional custom styles if needed */
+    main {
+        background: inherit;
+    }
+</style> 

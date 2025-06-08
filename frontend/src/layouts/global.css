@@ -1,0 +1,175 @@
+@import 'tailwindcss';
+
+/* Your custom styles below */
+
+@plugin '@tailwindcss/typography';
+
+@theme {
+  --breakpoint-*: initial;
+  --breakpoint-base: 0px;
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+  --breakpoint-xxl: 1440px;
+  --breakpoint-xxxl: 1920px;
+
+  --color-primary: #ffffff;
+  --color-secondary: #111111;
+  --color-accent: #3b82f6;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+
+  --font-sans: Inter, sans-serif;
+  --font-mono: JetBrains Mono, monospace;
+
+  --text-h1: 48px;
+  --text-h1--line-height: 1.2;
+  --text-h1-md: 36px;
+  --text-h1-md--line-height: 1.2;
+  --text-h2: 36px;
+  --text-h2--line-height: 1.3;
+  --text-h2-md: 28px;
+  --text-h2-md--line-height: 1.3;
+  --text-h3: 28px;
+  --text-h3--line-height: 1.4;
+  --text-h3-md: 24px;
+  --text-h3-md--line-height: 1.4;
+  --text-h4: 24px;
+  --text-h4--line-height: 1.4;
+  --text-h4-md: 20px;
+  --text-h4-md--line-height: 1.4;
+  --text-p: 18px;
+  --text-p--line-height: 1.6;
+  --text-p-md: 16px;
+  --text-p-md--line-height: 1.6;
+  --text-p-sm: 14px;
+  --text-p-sm--line-height: 1.6;
+
+  --animate-fade-in: fade-in 0.5s ease-out;
+  --animate-fade-out: fade-out 0.5s ease-out;
+  --animate-slide-in: slide-in 0.5s ease-out;
+  --animate-slide-out: slide-out 0.5s ease-out;
+
+  --radius: 8px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl:
+    0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  --transition-duration: 300ms;
+
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  @keyframes fade-out {
+    0% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  @keyframes slide-in {
+    0% {
+      transform: translateY(100%);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+  @keyframes slide-out {
+    0% {
+      transform: translateY(0);
+    }
+    100% {
+      transform: translateY(100%);
+    }
+  }
+}
+
+@utility container {
+  margin-inline: auto;
+  padding-inline: 1rem;
+  @media (width >= theme(--breakpoint-sm)) {
+    padding-inline: 2rem;
+  }
+  @media (width >= theme(--breakpoint-lg)) {
+    padding-inline: 4rem;
+  }
+  @media (width >= theme(--breakpoint-xl)) {
+    padding-inline: 5rem;
+  }
+  @media (width >= theme(--breakpoint-xxl)) {
+    padding-inline: 6rem;
+  }
+  @media (width >= theme(--breakpoint-xxxl)) {
+    padding-inline: 7rem;
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+.body-gradient {
+  /* dark base */
+  background-color: #0d0d0d;
+
+  /* three layered purple glows */
+  background-image:
+    /* bottom-left spot */
+    radial-gradient(
+      circle 400px at 20% 80%,
+      rgba(45, 5, 56, 0.6) 0%,
+      transparent 70%
+    ),
+    /* center wash */
+    radial-gradient(
+      circle 600px at 50% 50%,
+      rgba(70, 10, 80, 0.4) 0%,
+      transparent 80%
+    ),
+    /* top-right punch */
+    radial-gradient(
+      circle 700px at 80% 10%,
+      rgba(45, 5, 56, 0.8) 0%,
+      transparent 70%
+    );
+
+  background-repeat: no-repeat;
+  background-attachment: scroll;
+}
+
