@@ -2,7 +2,7 @@ import os
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from src.db.database import AsyncSessionLocal
+from src.db.database import get_async_sessionmaker
 from src.crud.crud_user import get_user_by_api_key
 from src.core.context import set_current_user_id
 from src.exceptions import InvalidAPIKeyError, InactiveUserError
@@ -23,8 +23,9 @@ class UserCredentialMiddleware(BaseHTTPMiddleware):
                 if self.debug:
                     print(f"API KEY from path: {api_key}")
                 
-                # Validate API key against database using async session
-                async with AsyncSessionLocal() as db:
+                # Validate API key against database using event-loop-specific session
+                session_maker = get_async_sessionmaker()
+                async with session_maker() as db:
                     user = await get_user_by_api_key(db, api_key)
                     if user:
                         if user.is_active:

@@ -13,6 +13,7 @@ from src.core.config import MCP_SERVER_HOST, MCP_SERVER_PORT
 from src.exceptions import MemoryMCPException
 from src.exceptions.handlers import handle_memory_mcp_exception
 from src.utils.health import perform_full_health_check
+from src.db.database import dispose_all_engines
 import os
 
 # Configure logging
@@ -46,6 +47,13 @@ async def lifespan(app: FastAPI):
     logger.info("MCP server has been initiated in a background thread.")
     yield
     logger.info("FastAPI application shutting down...")
+    
+    # Properly dispose of all async database engines across all event loops
+    try:
+        await dispose_all_engines()
+        logger.info("All database engines disposed successfully.")
+    except Exception as e:
+        logger.error(f"Error disposing database engines: {e}", exc_info=True)
 
 app = FastAPI(lifespan=lifespan)
 
