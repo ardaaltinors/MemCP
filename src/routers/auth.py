@@ -134,12 +134,18 @@ async def get_api_key_info(current_user: DBUser = Depends(get_current_active_use
     Get the current user's API key information including the actual API key.
     
     Returns whether the user has an API key, the actual key value, and when it was created.
-    Keep the API key secure and don't expose it unnecessarily.
     """
+    has_api_key = crud_user.has_api_key(current_user)
+    connection_url = None
+    
+    if has_api_key and current_user.api_key:
+        connection_url = get_mcp_connection_url(current_user.api_key)
+    
     return {
-        "has_api_key": crud_user.has_api_key(current_user),
+        "has_api_key": has_api_key,
         "api_key": current_user.api_key,
-        "created_at": current_user.api_key_created_at
+        "created_at": current_user.api_key_created_at,
+        "connection_url": connection_url
     }
 
 @router.delete("/users/me/api-key", tags=["API Keys"])
@@ -157,38 +163,3 @@ async def revoke_api_key(current_user: DBUser = Depends(get_current_active_user)
             record_id=str(current_user.id)
         )
     return {"message": "API key revoked successfully"}
-
-@router.get("/users/me/connection-url", response_model=user_schema.ConnectionUrlResponse, tags=["API Keys"])
-async def get_private_connection_url(current_user: DBUser = Depends(get_current_active_user)):
-    """
-    Get the private MCP connection URL for the current user.
-    
-    This URL can be used to connect to the MCP server using the user's API key.
-    The user must have an API key created before calling this endpoint.
-    """
-    if not crud_user.has_api_key(current_user):
-        raise RecordNotFoundError(
-            message="No API key found for this user. Create an API key first.",
-            table_name="users",
-            record_id=str(current_user.id)
-        )
-    
-    # Construct the private connection URL using configuration
-    connection_url = get_mcp_connection_url(current_user.api_key)
-    
-    return {
-        "connection_url": connection_url,
-        "api_key": current_user.api_key,
-        "created_at": current_user.api_key_created_at
-    }
-
-# Example endpoint that can be accessed with API key
-@router.get("/users/me/profile", response_model=user_schema.User, tags=["Users"])
-async def get_user_profile_with_api_key(current_user: DBUser = Depends(get_current_user_from_api_key)):
-    """
-    Get user profile using API key authentication.
-    
-    This endpoint demonstrates API key authentication. 
-    Use the Authorization header with 'Bearer <your-api-key>'.
-    """
-    return current_user 

@@ -54,7 +54,7 @@ async def get_user_memories(
 
 @router.get("/graph", response_model=MemoryGraphResponse, tags=["Memories"])
 async def get_memory_graph(
-    similarity_threshold: float = Query(0.7, ge=0.0, le=1.0, description="Minimum similarity threshold for connecting memories"),
+    similarity_threshold: float = Query(0.5, ge=0.0, le=1.0, description="Minimum similarity threshold for connecting memories"),
     current_user: DBUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_async_db)
 ):

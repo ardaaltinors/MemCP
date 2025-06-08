@@ -46,6 +46,7 @@ class ApiKeyInfo(BaseModel):
     has_api_key: bool
     api_key: Optional[str] = None
     created_at: Optional[datetime] = None
+    connection_url: Optional[str] = None
     
     class Config:
         from_attributes = True
