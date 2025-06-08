@@ -50,6 +50,15 @@ async def get_current_active_user(current_user: DBUser = Depends(get_current_use
         raise InactiveUserError(user_id=str(current_user.id), username=current_user.username)
     return current_user
 
+
+async def get_current_active_superuser(current_user: DBUser = Depends(get_current_active_user)) -> DBUser:
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The user doesn't have enough privileges"
+        )
+    return current_user
+
 @router.post("/token", response_model=token_schema.Token, tags=["Authentication"])
 async def login_for_access_token(db: AsyncSession = Depends(get_async_db), form_data: OAuth2PasswordRequestForm = Depends()):
     """

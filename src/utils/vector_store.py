@@ -1,10 +1,17 @@
 import os
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List, Dict
 
 from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import VectorParams, Distance, PointStruct, Filter, FieldCondition, MatchValue
+from qdrant_client.models import (
+    VectorParams,
+    Distance,
+    PointStruct,
+    Filter,
+    FieldCondition,
+    MatchValue,
+)
 
 from src.exceptions import QdrantServiceError, MemorySearchError
 from src.utils.embedding import EmbeddingService
@@ -161,6 +168,35 @@ class VectorStore:
                 "user_id": payload.get("user_id")
             })
         return results
+
+    async def retrieve_vectors(
+        self, memory_ids: List[str], user_id: uuid.UUID
+    ) -> Dict[str, List[float]]:
+        """Retrieve vectors for a list of memory IDs, ensuring they belong to the user."""
+        if not memory_ids:
+            return {}
+
+        try:
+            points = await self.client.retrieve(
+                collection_name=self.collection_name,
+                ids=memory_ids,
+                with_vectors=True,
+            )
+
+            # Filter points to ensure they belong to the correct user and return a dict
+            user_id_str = str(user_id)
+            return {
+                str(point.id): point.vector
+                for point in points
+                if point.payload and point.payload.get("user_id") == user_id_str
+            }
+        except Exception as e:
+            raise QdrantServiceError(
+                message="Failed to retrieve vectors from vector database",
+                operation="retrieve_vectors",
+                collection_name=self.collection_name,
+                original_exception=e,
+            )
 
     async def close(self):
         """Close the async client connection."""
