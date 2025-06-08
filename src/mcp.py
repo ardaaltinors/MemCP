@@ -7,7 +7,7 @@ from starlette.responses import PlainTextResponse
 from starlette.middleware import Middleware
 from src.memory_manager import MemoryManager
 from src.db import init_db
-from src.db.database import AsyncSessionLocal
+from src.db.database import get_async_sessionmaker
 from src.middlewares import UserCredentialMiddleware
 
 
@@ -29,7 +29,8 @@ async def remember_fact(content: str, tags: list[str] | None = None) -> str:
         content: The content or fact to be remembered.
         tags: Optional tags to help categorize the memory.
     """
-    async with AsyncSessionLocal() as db:
+    session_maker = get_async_sessionmaker()
+    async with session_maker() as db:
         return await memory_manager.store(content, db, tags)
 
 
