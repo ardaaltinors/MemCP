@@ -1,6 +1,15 @@
 # Memory MCP Server
 
-MCP memory management server.
+A comprehensive memory management server with MCP (Model Context Protocol) integration, featuring a modern web interface and robust API backend.
+
+## 🏗️ Architecture
+
+- **Backend**: FastAPI + FastMCP for memory operations
+- **Frontend**: Astro + React for modern web interface  
+- **Database**: PostgreSQL for structured data
+- **Vector Store**: Qdrant for semantic search
+- **Queue**: Celery + RabbitMQ for background tasks
+- **Cache**: Redis for session and task management
 
 ---
 
@@ -44,9 +53,23 @@ MCP memory management server.
    uv run python main.py
    ```
 
-## Services
+## 🚀 Quick Start
 
+### Backend Only
+
+```bash
+# Development
+uv install
+alembic upgrade head
+uv run python main.py
+```
+
+## 🌐 Services
+
+- **Frontend**: http://localhost:4321
 - **FastAPI Server**: http://localhost:8000
 - **MCP Server**: http://localhost:4200/mcp/
 - **Qdrant**: http://localhost:6333
 - **PostgreSQL**: localhost:5432
+- **RabbitMQ Management**: http://localhost:15672
+- **Redis**: localhost:6379

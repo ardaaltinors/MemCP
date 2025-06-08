@@ -4,7 +4,9 @@ import CompressionPlugin from "vite-plugin-compression";
 import sitemap from "@astrojs/sitemap";
 import svgr from "vite-plugin-svgr";
 
-export const siteUrl = "http://localhost:4321";
+// Use environment variables for production-ready configuration
+export const siteUrl = process.env.FRONTEND_URL || "http://localhost:4321";
+const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
 
 const date = new Date().toISOString();
 // https://astro.build/config
@@ -48,11 +50,16 @@ export default defineConfig({
         server: {
             proxy: {
                 '/api': {
-                    target: 'http://localhost:8000',
+                    target: backendUrl,
                     changeOrigin: true,
                     rewrite: (path) => path.replace(/^\/api/, '')
                 }
             }
+        },
+        // Define environment variables for the client-side
+        define: {
+            'import.meta.env.PUBLIC_BACKEND_URL': JSON.stringify(backendUrl),
+            'import.meta.env.PUBLIC_FRONTEND_URL': JSON.stringify(siteUrl),
         }
     },
     buildOptions: {
