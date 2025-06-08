@@ -1,0 +1,72 @@
+---
+import Layout from "layouts/Layout.astro";
+import { ApiKeyManager } from "@libs/ui/components/ApiKeyManager";
+import { ClientSelector } from "@libs/ui/components/ClientSelector";
+import { MemoryGraph } from "@libs/ui/components/MemoryGraph";
+---
+
+<Layout
+    title="Dashboard - MemCP"
+    description="Manage your portable agent memory and MCP connections."
+>
+    <main class="min-h-screen px-4 py-12 pt-32 md:pt-40">
+        <div class="max-w-6xl mx-auto space-y-8">
+            {/* Header */}
+            <div class="text-center mb-16">
+                <h1 class="text-5xl font-extrabold text-white mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400 inline-block">
+                    Dashboard
+                </h1>
+                <p class="text-gray-400 text-xl">
+                    Manage your MCP connections and explore your agent memory
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Left Column - API Keys & Client Selector */}
+                <div class="lg:col-span-1 space-y-8">
+                    {/* API Keys Section */}
+                    <div class="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl p-8 shadow-2xl transition-all duration-300 hover:border-purple-500/50 hover:scale-[1.01] hover:shadow-purple-500/50">
+                        <h2 class="text-2xl font-bold mb-4 flex items-center bg-clip-text text-transparent bg-gradient-to-r from-purple-300 to-blue-300">
+                            <svg class="w-7 h-7 mr-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m-2-2a2 2 0 00-2 2m2-2v2a2 2 0 01-2 2m-2-2H9m10 0a2 2 0 01-2 2H9a2 2 0 01-2-2m2 2V9a2 2 0 012-2m0 0V7a2 2 0 011-1 2 2 0 011 1v1a2 2 0 01-1 1"></path>
+                            </svg>
+                            API Keys
+                        </h2>
+                        <ApiKeyManager client:load />
+                    </div>
+
+                    {/* Client Selector Section */}
+                    <div class="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl p-8 shadow-2xl transition-all duration-300 hover:border-blue-500/50 hover:scale-[1.01] hover:shadow-blue-500/50">
+                        <h2 class="text-2xl font-bold mb-4 flex items-center bg-clip-text text-transparent bg-gradient-to-r from-blue-300 to-green-300">
+                            <svg class="w-7 h-7 mr-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            MCP Client
+                        </h2>
+                        <ClientSelector client:load />
+                    </div>
+                </div>
+
+                {/* Right Column - Memory Graph */}
+                <div class="lg:col-span-2">
+                    <div class="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl p-8 shadow-2xl h-full min-h-[600px] transition-all duration-300 hover:border-green-500/50 hover:scale-[1.01] hover:shadow-green-500/50">
+                        <h2 class="text-2xl font-bold mb-4 flex items-center bg-clip-text text-transparent bg-gradient-to-r from-green-300 to-teal-300">
+                            <svg class="w-7 h-7 mr-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                            </svg>
+                            Memory Graph
+                        </h2>
+                        <MemoryGraph client:load />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</Layout>
+
+<style>
+    /* main {
+        background: inherit;
+    } */
+</style> 

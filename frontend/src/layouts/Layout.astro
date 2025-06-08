@@ -1,0 +1,31 @@
+---
+import "./global.css";
+import { PreviewPng } from "@static/images";
+import MetaConfig from "./MetaConfig.astro";
+import Header from "@libs/ui/components/Header.astro";
+import Footer from "@libs/ui/components/Footer.astro";
+
+type Props = {
+    title: string;
+    description: string;
+    overwritePreview?: string;
+};
+
+const { title, description, overwritePreview } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+    <head>
+        <MetaConfig
+            title={title}
+            description={description}
+            preview={overwritePreview ? overwritePreview : PreviewPng.src}
+        />
+    </head>
+    <body class="body-gradient">
+        <Header />
+        <slot />
+        <Footer />
+    </body>
+</html>
