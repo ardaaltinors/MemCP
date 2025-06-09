@@ -71,6 +71,7 @@ def _store_memories_batch(
 ) -> List[str]:
     """
     Store multiple memories synchronously in both PostgreSQL and Qdrant using optimized batch operations.
+    Checks for duplicates before storing to avoid redundant memories.
     
     Args:
         user_id: User ID
@@ -83,29 +84,59 @@ def _store_memories_batch(
     if not memories:
         return []
     
+    # Initialize vector store for duplicate checking
+    sync_vector_store = SyncVectorStore()
+    
     # Prepare memory data for batch operations
     memory_data = []
     stored_memory_ids = []
+    skipped_duplicates = 0
     
-    # First, store all memories in PostgreSQL
+    # Check each memory for duplicates before storing
     for memory_content in memories:
         if not memory_content.strip():
             continue
-            
+        
+        cleaned_content = memory_content.strip()
+        
+        # Check for similar memories in Qdrant
         try:
-            memory_id = _store_memory_sync(user_id, memory_content.strip(), db, tags=["ai_extracted"])
+            similar_memories = sync_vector_store.search_similar_memories(
+                content=cleaned_content,
+                user_id=user_id
+            )
+            
+            if similar_memories:
+                # Found duplicate, skip this memory
+                skipped_duplicates += 1
+                logger.debug(
+                    f"Skipping duplicate memory for user {user_id}. "
+                    f"Found {len(similar_memories)} similar memories with top score: {similar_memories[0]['score']:.3f}"
+                )
+                continue
+                
+        except Exception as e:
+            logger.warning(f"Failed to check for duplicate memories: {e}", exc_info=True)
+            # Continue with storing the memory if duplicate check fails
+            
+        # No duplicates found, proceed with storing
+        try:
+            memory_id = _store_memory_sync(user_id, cleaned_content, db, tags=["ai_extracted"])
             stored_memory_ids.append(memory_id)
             
             # Prepare data for Qdrant batch operation
             memory_data.append({
                 "memory_id": memory_id,
-                "content": memory_content.strip(),
+                "content": cleaned_content,
                 "tags": ["ai_extracted"]
             })
             
         except MemoryStoreError as e:
-            logger.error(f"Failed to store memory in PostgreSQL: {memory_content[:50]}...", exc_info=True)
+            logger.error(f"Failed to store memory in PostgreSQL: {cleaned_content[:50]}...", exc_info=True)
             # Continue with other memories rather than failing completely
+    
+    if skipped_duplicates > 0:
+        logger.info(f"Skipped {skipped_duplicates} duplicate memories for user {user_id}")
             
     # Commit all PostgreSQL changes at once
     try:
@@ -115,21 +146,20 @@ def _store_memories_batch(
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to commit memories to PostgreSQL for user {user_id}: {e}", exc_info=True)
+        sync_vector_store.close()
         return []
     
     # Now store in Qdrant using the synchronous batch operation
     if memory_data:
         try:
-            sync_vector_store = SyncVectorStore()
             sync_vector_store.store_memories_batch(memory_data, user_id)
-            sync_vector_store.close()
-            
             logger.info(f"Successfully stored {len(memory_data)} memories in Qdrant for user {user_id}")
             
         except Exception as e:
             logger.error(f"Failed to store memories in Qdrant for user {user_id}: {e}", exc_info=True)
             # Don't fail the task since PostgreSQL storage succeeded
     
+    sync_vector_store.close()
     return stored_memory_ids
 
 @celery_app.task(name="tasks.update_profile_background")

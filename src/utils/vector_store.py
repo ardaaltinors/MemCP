@@ -34,6 +34,7 @@ class VectorStore:
         
         self.score_threshold = score_threshold if score_threshold is not None else float(os.getenv("MEMORY_SCORE_THRESHOLD", "0.40"))
         self.upper_score_threshold = upper_score_threshold if upper_score_threshold is not None else float(os.getenv("MEMORY_UPPER_SCORE_THRESHOLD", "0.98"))
+        self.duplicate_threshold = float(os.getenv("MEMORY_DUPLICATE_THRESHOLD", "0.90"))
         
         self.timeout = float(os.getenv("QDRANT_TIMEOUT", "60"))
         self.prefer_grpc = os.getenv("QDRANT_PREFER_GRPC", "false").lower() == "true"
@@ -228,6 +229,7 @@ class SyncVectorStore:
         
         self.score_threshold = score_threshold if score_threshold is not None else float(os.getenv("MEMORY_SCORE_THRESHOLD", "0.40"))
         self.upper_score_threshold = upper_score_threshold if upper_score_threshold is not None else float(os.getenv("MEMORY_UPPER_SCORE_THRESHOLD", "0.98"))
+        self.duplicate_threshold = float(os.getenv("MEMORY_DUPLICATE_THRESHOLD", "0.90"))
         
         self.timeout = float(os.getenv("QDRANT_TIMEOUT", "60"))
         self.prefer_grpc = os.getenv("QDRANT_PREFER_GRPC", "false").lower() == "true"
@@ -414,6 +416,69 @@ class SyncVectorStore:
                 "user_id": payload.get("user_id")
             })
         return results
+
+    def search_similar_memories(self, content: str, user_id: uuid.UUID, threshold: float = None) -> list[dict]:
+        """Search for highly similar memories to detect potential duplicates.
+        
+        Args:
+            content: Memory content to check for similarity
+            user_id: User ID
+            threshold: Similarity threshold (uses duplicate_threshold if not specified)
+            
+        Returns:
+            List of similar memories with scores above the threshold
+        """
+        try:
+            self._ensure_collection_exists()
+            
+            # Generate embedding synchronously
+            query_embedding = self.embedding_service.generate_embedding_sync(content)
+            
+            # Use duplicate threshold if not specified
+            similarity_threshold = threshold if threshold is not None else self.duplicate_threshold
+
+            # Create filter to only search memories for the current user
+            user_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="user_id",
+                        match=MatchValue(value=str(user_id))
+                    )
+                ]
+            )
+
+            # Search with high similarity threshold
+            search_result = self.client.search(
+                collection_name=self.collection_name,
+                query_vector=query_embedding,
+                query_filter=user_filter,
+                score_threshold=similarity_threshold,
+                limit=5,  # We only need a few top matches to detect duplicates
+                with_payload=True
+            )
+            
+            results = []
+            for hit in search_result:
+                payload = hit.payload or {}
+                results.append({
+                    "id": hit.id,
+                    "content": payload.get("content"),
+                    "tags": payload.get("tags"),
+                    "score": hit.score,
+                    "timestamp": payload.get("timestamp"),
+                    "user_id": payload.get("user_id")
+                })
+            
+            return results
+            
+        except Exception as e:
+            raise MemorySearchError(
+                message="Failed to search for similar memories in vector database",
+                query_text=content[:50] + "...",  # Truncate for error message
+                user_id=str(user_id),
+                search_type="duplicate_check_sync",
+                original_exception=e
+            )
 
     def close(self):
         """Close the sync client connection."""
