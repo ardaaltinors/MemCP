@@ -145,31 +145,99 @@
 }
 
 .body-gradient {
-  /* dark base */
-  background-color: #0d0d0d;
+  /* Apple-inspired deep navy base */
+  background-color: #0D0D1A;
 
-  /* three layered purple glows */
+  /* Sophisticated layered gradients */
   background-image:
-    /* bottom-left spot */
+    /* Bottom-left aurora */
     radial-gradient(
-      circle 400px at 20% 80%,
-      rgba(45, 5, 56, 0.6) 0%,
+      ellipse 800px 600px at 10% 90%,
+      rgba(59, 130, 246, 0.15) 0%,
+      rgba(99, 102, 241, 0.1) 40%,
       transparent 70%
     ),
-    /* center wash */
+    /* Center nebula */
     radial-gradient(
-      circle 600px at 50% 50%,
-      rgba(70, 10, 80, 0.4) 0%,
-      transparent 80%
+      circle 1000px at 50% 50%,
+      rgba(139, 92, 246, 0.08) 0%,
+      transparent 60%
     ),
-    /* top-right punch */
+    /* Top-right cosmic glow */
     radial-gradient(
-      circle 700px at 80% 10%,
-      rgba(45, 5, 56, 0.8) 0%,
+      ellipse 900px 700px at 85% 15%,
+      rgba(168, 85, 247, 0.12) 0%,
+      rgba(139, 92, 246, 0.06) 50%,
       transparent 70%
+    ),
+    /* Subtle mesh overlay */
+    radial-gradient(
+      circle 600px at 30% 30%,
+      rgba(59, 130, 246, 0.05) 0%,
+      transparent 50%
     );
 
   background-repeat: no-repeat;
-  background-attachment: scroll;
+  background-attachment: fixed;
+  background-size: cover;
+  position: relative;
+}
+
+/* Apple-style glass morphism */
+.glass-morphism {
+  background: rgba(13, 13, 26, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Glow effects */
+.glow-blue {
+  box-shadow: 0 0 30px rgba(59, 130, 246, 0.5),
+              0 0 60px rgba(59, 130, 246, 0.3),
+              0 0 90px rgba(59, 130, 246, 0.1);
+}
+
+.glow-purple {
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.5),
+              0 0 60px rgba(139, 92, 246, 0.3),
+              0 0 90px rgba(139, 92, 246, 0.1);
+}
+
+/* Smooth transitions */
+* {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(13, 13, 26, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.5);
+}
+
+/* Selection styling */
+::selection {
+  background: rgba(99, 102, 241, 0.3);
+  color: #ffffff;
+}
+
+::-moz-selection {
+  background: rgba(99, 102, 241, 0.3);
+  color: #ffffff;
 }
 

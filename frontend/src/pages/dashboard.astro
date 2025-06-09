@@ -1,72 +1,100 @@
 ---
 import Layout from "layouts/Layout.astro";
-import { ApiKeyManager } from "@libs/ui/components/ApiKeyManager";
-import { ClientSelector } from "@libs/ui/components/ClientSelector";
-import { MemoryGraph } from "@libs/ui/components/MemoryGraph";
+import { DashboardContainer } from "@libs/ui/components/DashboardContainer";
 ---
 
 <Layout
-    title="Dashboard - MemCP"
-    description="Manage your portable agent memory and MCP connections."
+    title="Arda's Memory Space - MemCP"
+    description="Manage your portable agent memory and explore your knowledge graph."
+    hideHeader={true}
 >
-    <main class="min-h-screen px-4 py-12 pt-32 md:pt-40">
-        <div class="max-w-6xl mx-auto space-y-8">
-            {/* Header */}
-            <div class="text-center mb-16">
-                <h1 class="text-5xl font-extrabold text-white mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400 inline-block">
-                    Dashboard
+    <main class="min-h-screen bg-[#0D0D1A]">
+        {/* Custom Dashboard Header */}
+        <div class="absolute top-0 left-0 right-0 z-20 bg-[#0D0D1A]/80 backdrop-blur-xl border-b border-gray-800/50">
+            <div class="h-24 px-6 flex items-center justify-between">
+                {/* Left: Logo */}
+                <a href="/" class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <span class="text-white font-bold text-lg">M</span>
+                    </div>
+                    <span class="text-white font-semibold text-lg">MemCP</span>
+                </a>
+
+                {/* Center: Page Title */}
+                <h1 class="absolute left-1/2 transform -translate-x-1/2 text-2xl font-medium text-white">
+                    Your Memory Space
                 </h1>
-                <p class="text-gray-400 text-xl">
-                    Manage your MCP connections and explore your agent memory
-                </p>
-            </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Column - API Keys & Client Selector */}
-                <div class="lg:col-span-1 space-y-8">
-                    {/* API Keys Section */}
-                    <div class="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl p-8 shadow-2xl transition-all duration-300 hover:border-purple-500/50 hover:scale-[1.01] hover:shadow-purple-500/50">
-                        <h2 class="text-2xl font-bold mb-4 flex items-center bg-clip-text text-transparent bg-gradient-to-r from-purple-300 to-blue-300">
-                            <svg class="w-7 h-7 mr-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m-2-2a2 2 0 00-2 2m2-2v2a2 2 0 01-2 2m-2-2H9m10 0a2 2 0 01-2 2H9a2 2 0 01-2-2m2 2V9a2 2 0 012-2m0 0V7a2 2 0 011-1 2 2 0 011 1v1a2 2 0 01-1 1"></path>
-                            </svg>
-                            API Keys
-                        </h2>
-                        <ApiKeyManager client:load />
-                    </div>
+                {/* Right: Actions */}
+                <div class="flex items-center space-x-6">
+                    {/* API Key Button */}
+                    <button aria-label="API Key" class="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition-colors group">
+                        <svg class="w-5 h-5 text-gray-400 group-hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                        </svg>
+                        <span class="text-gray-300 text-sm font-medium">API Key</span>
+                    </button>
 
-                    {/* Client Selector Section */}
-                    <div class="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl p-8 shadow-2xl transition-all duration-300 hover:border-blue-500/50 hover:scale-[1.01] hover:shadow-blue-500/50">
-                        <h2 class="text-2xl font-bold mb-4 flex items-center bg-clip-text text-transparent bg-gradient-to-r from-blue-300 to-green-300">
-                            <svg class="w-7 h-7 mr-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
-                            MCP Client
-                        </h2>
-                        <ClientSelector client:load />
-                    </div>
-                </div>
+                    {/* Profile/Avatar */}
+                    <button aria-label="Profile" class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center hover:scale-105 transition-transform">
+                        <span class="text-white font-semibold">A</span>
+                    </button>
 
-                {/* Right Column - Memory Graph */}
-                <div class="lg:col-span-2">
-                    <div class="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl p-8 shadow-2xl h-full min-h-[600px] transition-all duration-300 hover:border-green-500/50 hover:scale-[1.01] hover:shadow-green-500/50">
-                        <h2 class="text-2xl font-bold mb-4 flex items-center bg-clip-text text-transparent bg-gradient-to-r from-green-300 to-teal-300">
-                            <svg class="w-7 h-7 mr-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
-                            </svg>
-                            Memory Graph
-                        </h2>
-                        <MemoryGraph client:load />
-                    </div>
+                    {/* Settings Dropdown */}
+                    <button aria-label="Settings" class="p-2 rounded-lg hover:bg-gray-800/50 transition-colors">
+                        <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </div>
+
+        {/* Dashboard Container with Memory Graph and Detail Panel */}
+        <DashboardContainer client:only="react" />
     </main>
 </Layout>
 
 <style>
-    /* main {
-        background: inherit;
-    } */
-</style> 
+    /* Enhanced dark mode styles for Apple-like aesthetic */
+    main {
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif;
+    }
+
+    /* Subtle glow effect for the header */
+    .absolute.top-0::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(59, 130, 246, 0.5) 50%, 
+            transparent 100%
+        );
+    }
+
+    /* Enhanced gradient background */
+    main::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            radial-gradient(circle 600px at 20% 80%, rgba(99, 102, 241, 0.15), transparent 70%),
+            radial-gradient(circle 800px at 80% 20%, rgba(139, 92, 246, 0.1), transparent 70%),
+            radial-gradient(circle 1000px at 50% 50%, rgba(59, 130, 246, 0.05), transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    /* Ensure content is above gradient */
+    main > * {
+        position: relative;
+        z-index: 1;
+    }
+</style>
