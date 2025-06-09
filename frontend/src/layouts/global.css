@@ -256,3 +256,29 @@
   );
 }
 
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  /* Improve touch targets */
+  button, a {
+    min-height: 44px;
+  }
+  
+  /* Disable hover effects on touch devices */
+  @media (hover: none) and (pointer: coarse) {
+    *:hover {
+      transform: none !important;
+      scale: none !important;
+    }
+  }
+  
+  /* Improve text selection on mobile */
+  * {
+    -webkit-tap-highlight-color: rgba(99, 102, 241, 0.3);
+  }
+  
+  /* Better scrolling on mobile */
+  body {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+

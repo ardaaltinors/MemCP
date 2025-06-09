@@ -276,9 +276,9 @@ export const DashboardContainer: React.FC = () => {
   return (
     <>
       {/* Main Content Area */}
-      <div className="flex h-[calc(100vh-6rem)]">
-        {/* Left Section: Interactive Memory Map (60%) */}
-        <div className="w-[60%] h-full border-r border-gray-800/50">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] lg:h-[calc(100vh-6rem)] pt-16 md:pt-20 lg:pt-24">
+        {/* Memory Map Section */}
+        <div className="w-full lg:w-[60%] h-1/2 lg:h-full border-b lg:border-b-0 lg:border-r border-gray-800/50">
           <div className="h-full relative">
             <MemoryGraphDashboard 
               onNodeSelect={handleNodeSelect}
@@ -289,8 +289,8 @@ export const DashboardContainer: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Section: Memory Detail Panel (40%) */}
-        <div className="w-[40%] h-full bg-[#0D0D1A]">
+        {/* Memory Detail Panel */}
+        <div className="w-full lg:w-[40%] h-1/2 lg:h-full bg-[#0D0D1A]">
           <div className="h-full">
             <MemoryDetailPanel 
               selectedMemory={selectedMemory} 
