@@ -2,10 +2,11 @@ import uuid
 import json
 import logging
 from datetime import datetime, timezone
-from sqlalchemy import select
+from typing import List, Dict, Any
+from sqlalchemy import select, update
 from src.celery_app import celery_app
 from src.db.database import SyncSessionLocal
-from src.db.models import ProcessedUserProfile
+from src.db.models import ProcessedUserProfile, UserMessage
 from src.nlp.synthesize_user_profile import get_llm_profile_synthesis
 from src.exceptions import UserContextError
 from src.exceptions.handlers import ExceptionHandler
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 @celery_app.task(name="tasks.update_profile_background")
 def update_profile_background(
     user_id_str: str,
-    prompt: str,
+    unprocessed_messages: List[Dict[str, Any]],
     existing_metadata_json_str: str,
     existing_summary_text: str,
 ) -> None:
@@ -25,7 +26,7 @@ def update_profile_background(
     
     Args:
         user_id_str: UUID string of the user
-        prompt: New user message to process
+        unprocessed_messages: List of unprocessed messages to process
         existing_metadata_json_str: Current metadata as JSON string
         existing_summary_text: Current profile summary
         
@@ -34,11 +35,27 @@ def update_profile_background(
     """
     try:
         user_id = uuid.UUID(user_id_str)
-        logger.info(f"Starting profile update task for user {user_id}")
+        logger.info(f"Starting profile update task for user {user_id} with {len(unprocessed_messages)} messages")
         
         db = SyncSessionLocal()
         try:
-            user_messages_str = f"Timestamp: {datetime.now(timezone.utc).isoformat()}\\nUser: {prompt}"
+            # Build comprehensive user messages string from all unprocessed messages
+            user_messages_parts = []
+            message_ids_to_mark = []
+            
+            for msg_data in unprocessed_messages:
+                timestamp = msg_data.get("created_at", datetime.now(timezone.utc).isoformat())
+                content = msg_data.get("message_content", "")
+                message_id = msg_data.get("id")
+                
+                user_messages_parts.append(f"Timestamp: {timestamp}\nUser: {content}")
+                if message_id:
+                    message_ids_to_mark.append(message_id)
+            
+            user_messages_str = "\n\n".join(user_messages_parts)
+            
+            logger.debug(f"Processing {len(unprocessed_messages)} messages for user {user_id}")
+            logger.debug(f"Combined messages length: {len(user_messages_str)} characters")
 
             logger.debug(f"Calling LLM for profile synthesis for user {user_id}")
             llm_response = get_llm_profile_synthesis(
@@ -98,6 +115,19 @@ def update_profile_background(
                     db.commit()
                     logger.info(f"Successfully updated profile for user {user_id}")
                     
+                    # Mark specific processed messages as processed after successful profile update
+                    if message_ids_to_mark:
+                        logger.debug(f"Marking {len(message_ids_to_mark)} specific messages as processed for user {user_id}")
+                        update_stmt = (
+                            update(UserMessage)
+                            .where(UserMessage.id.in_(message_ids_to_mark))
+                            .values(is_processed=True)
+                        )
+                        result = db.execute(update_stmt)
+                        processed_count = result.rowcount
+                        db.commit()
+                        logger.info(f"Marked {processed_count} messages as processed for user {user_id}")
+                    
                 except Exception as e:
                     db.rollback()
                     logger.error(f"Database commit failed for user {user_id}: {e}", exc_info=True)
@@ -135,7 +165,7 @@ def update_profile_background(
             operation="update_profile_background",
             user_id=user_id_str,
             additional_context={
-                "prompt_length": len(prompt) if prompt else 0,
+                "message_count": len(unprocessed_messages) if unprocessed_messages else 0,
                 "has_existing_metadata": bool(existing_metadata_json_str),
                 "has_existing_summary": bool(existing_summary_text)
             }
