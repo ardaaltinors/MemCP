@@ -2,17 +2,135 @@ import uuid
 import json
 import logging
 from datetime import datetime, timezone
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from sqlalchemy import select, update
+from sqlalchemy.orm import Session
 from src.celery_app import celery_app
 from src.db.database import SyncSessionLocal
-from src.db.models import ProcessedUserProfile, UserMessage
+from src.db.models import ProcessedUserProfile, UserMessage, Memory
 from src.nlp.synthesize_user_profile import get_llm_profile_synthesis
-from src.exceptions import UserContextError
+from src.exceptions import UserContextError, MemoryStoreError
 from src.exceptions.handlers import ExceptionHandler
+from src.utils.vector_store import SyncVectorStore
+from src.core.context import user_context
 
 # Configure logger for celery tasks
 logger = logging.getLogger(__name__)
+
+def _store_memory_sync(
+    user_id: uuid.UUID,
+    content: str,
+    db: Session,
+    tags: Optional[List[str]] = None
+) -> str:
+    """
+    Synchronous helper function to store a memory in PostgreSQL.
+    Used within Celery tasks that use sync database sessions.
+    
+    Args:
+        user_id: User ID
+        content: Memory content
+        db: Sync database session
+        tags: Optional tags for the memory
+        
+    Returns:
+        Memory ID string
+        
+    Raises:
+        MemoryStoreError: If memory storage fails
+    """
+    try:
+        memory_id = uuid.uuid4()
+        
+        # Store in PostgreSQL
+        db_memory = Memory(
+            id=memory_id,
+            content=content,
+            tags=tags or [],
+            user_id=user_id
+        )
+        db.add(db_memory)
+        db.flush()  # Don't commit yet, let the calling function handle it
+        
+        logger.debug(f"Stored memory {memory_id} in PostgreSQL for user {user_id}")
+        return str(memory_id)
+        
+    except Exception as e:
+        logger.error(f"Failed to store memory in PostgreSQL for user {user_id}: {e}", exc_info=True)
+        raise MemoryStoreError(
+            message="Failed to store memory in PostgreSQL",
+            user_id=str(user_id),
+            storage_type="postgresql",
+            original_exception=e
+        )
+
+def _store_memories_batch(
+    user_id: uuid.UUID,
+    memories: List[str],
+    db: Session
+) -> List[str]:
+    """
+    Store multiple memories synchronously in both PostgreSQL and Qdrant using optimized batch operations.
+    
+    Args:
+        user_id: User ID
+        memories: List of memory contents
+        db: Sync database session
+        
+    Returns:
+        List of memory IDs that were successfully stored
+    """
+    if not memories:
+        return []
+    
+    # Prepare memory data for batch operations
+    memory_data = []
+    stored_memory_ids = []
+    
+    # First, store all memories in PostgreSQL
+    for memory_content in memories:
+        if not memory_content.strip():
+            continue
+            
+        try:
+            memory_id = _store_memory_sync(user_id, memory_content.strip(), db, tags=["ai_extracted"])
+            stored_memory_ids.append(memory_id)
+            
+            # Prepare data for Qdrant batch operation
+            memory_data.append({
+                "memory_id": memory_id,
+                "content": memory_content.strip(),
+                "tags": ["ai_extracted"]
+            })
+            
+        except MemoryStoreError as e:
+            logger.error(f"Failed to store memory in PostgreSQL: {memory_content[:50]}...", exc_info=True)
+            # Continue with other memories rather than failing completely
+            
+    # Commit all PostgreSQL changes at once
+    try:
+        db.commit()
+        logger.info(f"Successfully stored {len(stored_memory_ids)} memories in PostgreSQL for user {user_id}")
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to commit memories to PostgreSQL for user {user_id}: {e}", exc_info=True)
+        return []
+    
+    # Now store in Qdrant using the synchronous batch operation
+    if memory_data:
+        try:
+            sync_vector_store = SyncVectorStore()
+            sync_vector_store.store_memories_batch(memory_data, user_id)
+            sync_vector_store.close()
+            
+            logger.info(f"Successfully stored {len(memory_data)} memories in Qdrant for user {user_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to store memories in Qdrant for user {user_id}: {e}", exc_info=True)
+            # Don't fail the task since PostgreSQL storage succeeded
+    
+    return stored_memory_ids
 
 @celery_app.task(name="tasks.update_profile_background")
 def update_profile_background(
@@ -66,16 +184,19 @@ def update_profile_background(
 
             new_summary = None
             new_metadata_json_str = None
+            memories_to_store = []
 
             try:
                 new_summary = llm_response.user_profile_summary.strip()
                 raw_metadata_str = llm_response.user_profile_metadata.strip()
+                memories_to_store = llm_response.user_profile_memories or []
                 
                 # Validate JSON format
                 json.loads(raw_metadata_str)
                 new_metadata_json_str = raw_metadata_str
                 
                 logger.debug(f"Successfully parsed LLM response for user {user_id}")
+                logger.debug(f"Extracted {len(memories_to_store)} memories to store")
                 
             except json.JSONDecodeError as e:
                 logger.error(f"Invalid JSON metadata from LLM for user {user_id}: {raw_metadata_str[:100]}...", exc_info=True)
@@ -114,6 +235,13 @@ def update_profile_background(
                 try:
                     db.commit()
                     logger.info(f"Successfully updated profile for user {user_id}")
+                    
+                    # Store extracted memories in both PostgreSQL and Qdrant
+                    if memories_to_store:
+                        logger.info(f"Storing {len(memories_to_store)} extracted memories for user {user_id}")
+                        with user_context(user_id):
+                            stored_memory_ids = _store_memories_batch(user_id, memories_to_store, db)
+                            logger.info(f"Successfully stored {len(stored_memory_ids)} memories for user {user_id}")
                     
                     # Mark specific processed messages as processed after successful profile update
                     if message_ids_to_mark:
