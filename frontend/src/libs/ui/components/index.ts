@@ -4,3 +4,8 @@ export * from "./RegisterForm";
 export * from "./ApiKeyManager";
 export * from "./ClientSelector";
 export * from "./MemoryGraph";
+export * from "./MemoryDetailPanel";
+export * from "./MemoryGraphDashboard";
+export * from "./DashboardContainer";
+export * from "./CredentialsContainer";
+export * from "./DashboardHeader";

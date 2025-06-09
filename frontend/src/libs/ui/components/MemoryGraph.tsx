@@ -21,6 +21,7 @@ import {
 import { getMemoryGraph, createMemory, updateMemory, deleteMemory } from '@libs/api';
 import type { ApiMemoryNode, ApiMemoryEdge, CreateMemoryRequest, UpdateMemoryRequest } from '@libs/types';
 import { authUtils } from '@libs/utils/auth';
+import { Search, Filter, Edit2, Trash2, MapPin } from 'lucide-react';
 
 import '@xyflow/react/dist/style.css';
 
@@ -259,7 +260,7 @@ const transformApiDataToReactFlow = (
       data: {
         title: node.label,
         content: node.content,
-        timestamp: new Date(node.created_at).toLocaleDateString(),
+        timestamp: node.created_at, // Keep the full ISO timestamp for sorting
         tags: node.tags,
         colorGradient: componentColors[componentIndex],
       },
@@ -308,6 +309,11 @@ function MemoryGraphInner() {
   const [isCreating, setIsCreating] = useState(false);
   const [newContent, setNewContent] = useState('');
   const [newTags, setNewTags] = useState<string[]>([]);
+  
+  // Timeline state
+  const [timelineSearch, setTimelineSearch] = useState('');
+  const [selectedTagsFilter, setSelectedTagsFilter] = useState<string[]>([]);
+  const [lastUpdated] = useState(new Date());
   
   const { fitView } = useReactFlow();
 
@@ -690,8 +696,8 @@ function MemoryGraphInner() {
         </div>
       </div>
 
-      {/* React Flow Container */}
-      <div className="flex-1 relative">
+      {/* React Flow Container - Changed from flex-1 to fixed height to ensure timeline is visible */}
+      <div className="flex-grow relative" style={{ minHeight: '400px', maxHeight: 'calc(100vh - 24rem)' }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -1031,7 +1037,184 @@ function MemoryGraphInner() {
             </Panel>
           )}
         </ReactFlow>
-              </div>
+      </div>
+              
+      {/* Timeline Section - Always visible */}
+      <div className="bg-gray-900 border-t border-gray-700 h-80 flex-shrink-0">
+        {/* Timeline Header */}
+        <div className="h-12 flex items-center justify-between px-6 border-b border-gray-700">
+          <div className="flex items-center gap-4">
+            <h3 className="text-sm font-medium text-gray-300">Memory Timeline</h3>
+            <span className="text-xs text-gray-500">{nodes.length} memories</span>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Search memories..."
+                value={timelineSearch}
+                onChange={(e) => setTimelineSearch(e.target.value)}
+                className="w-64 h-8 pl-9 pr-3 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+              />
+            </div>
+            
+            {/* Tag Filter */}
+            <div className="relative group">
+              <button className="h-8 px-3 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-400 hover:border-gray-600 transition-colors flex items-center gap-2">
+                <Filter className="w-4 h-4" />
+                <span>Filter by tag</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Timeline Content */}
+        <div className="h-[calc(100%-3rem)] overflow-y-auto">
+            <div className="relative px-6 py-6">
+              {/* Vertical Line */}
+              <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500/50 via-blue-400/30 to-transparent" />
+              
+              {/* Memory Cards */}
+              {nodes
+                .filter(node => {
+                  const nodeData = node.data as MemoryNodeData;
+                  const matchesSearch = !timelineSearch || 
+                    nodeData.title.toLowerCase().includes(timelineSearch.toLowerCase()) ||
+                    nodeData.content.toLowerCase().includes(timelineSearch.toLowerCase());
+                  const matchesTags = selectedTagsFilter.length === 0 || 
+                    selectedTagsFilter.some(tag => nodeData.tags?.includes(tag));
+                  return matchesSearch && matchesTags;
+                })
+                .sort((a, b) => {
+                  // Sort by timestamp, newest first
+                  const dateA = (a.data as MemoryNodeData).timestamp;
+                  const dateB = (b.data as MemoryNodeData).timestamp;
+                  return dateB.localeCompare(dateA);
+                })
+                .map((node, index) => {
+                  const nodeData = node.data as MemoryNodeData;
+                  const date = new Date(nodeData.timestamp);
+                  
+                  return (
+                    <div key={node.id} className="relative mb-8 group">
+                      {/* Timeline Dot */}
+                      <div className="absolute left-1/2 -translate-x-1/2 w-3 h-3 bg-blue-500 rounded-full ring-4 ring-gray-900 z-10 group-hover:scale-125 transition-transform" />
+                      
+                      {/* Timestamp (Left) */}
+                      <div className="absolute right-[calc(50%+1.5rem)] text-right pr-4">
+                        <div className="text-sm font-medium text-gray-400">
+                          {date.toLocaleDateString('en-US', { 
+                            month: 'long', 
+                            day: 'numeric', 
+                            year: 'numeric' 
+                          })}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {date.toLocaleTimeString('en-US', { 
+                            hour: 'numeric', 
+                            minute: '2-digit',
+                            hour12: true 
+                          })}
+                        </div>
+                      </div>
+                      
+                      {/* Memory Card (Right) */}
+                      <div className="ml-[calc(50%+1.5rem)] max-w-md">
+                        <div 
+                          className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-4 hover:border-blue-500/50 hover:bg-gray-800/70 transition-all cursor-pointer group-hover:shadow-lg group-hover:shadow-blue-500/10"
+                          onClick={() => {
+                            setSelectedNode(nodes.find(n => n.id === node.id) || null);
+                            fitView({ 
+                              nodes: [{ id: node.id }], 
+                              duration: 800,
+                              padding: 0.2
+                            });
+                          }}
+                        >
+                          {/* Title */}
+                          <h4 className="font-semibold text-gray-200 mb-2 text-sm">{nodeData.title}</h4>
+                          
+                          {/* Tags */}
+                          {nodeData.tags && nodeData.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mb-3">
+                              {nodeData.tags.map((tag, tagIndex) => (
+                                <span 
+                                  key={tagIndex}
+                                  className="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-xs rounded-full border border-blue-500/20"
+                                >
+                                  #{tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {/* Content Snippet */}
+                          <p className="text-sm text-gray-400 line-clamp-2 mb-3">
+                            {nodeData.content}
+                          </p>
+                          
+                          {/* Actions */}
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                              className="p-1.5 text-gray-500 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-all"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const targetNode = nodes.find(n => n.id === node.id);
+                                if (targetNode) {
+                                  setSelectedNode(targetNode);
+                                  setIsEditing(true);
+                                  setEditContent(nodeData.content);
+                                  setEditTags(nodeData.tags || []);
+                                }
+                              }}
+                              title="Edit memory"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteMemory();
+                              }}
+                              title="Delete memory"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              className="p-1.5 text-gray-500 hover:text-green-400 hover:bg-green-500/10 rounded transition-all"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                fitView({ 
+                                  nodes: [{ id: node.id }], 
+                                  duration: 800,
+                                  padding: 0.2
+                                });
+                              }}
+                              title="Show in graph"
+                            >
+                              <MapPin className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {/* End of timeline indicator */}
+                {nodes.length > 0 && (
+                  <div className="relative">
+                    <div className="absolute left-1/2 -translate-x-1/2 w-3 h-3 bg-gray-600 rounded-full ring-4 ring-gray-900" />
+                    <div className="text-center mt-8 text-sm text-gray-500">End of timeline</div>
+                  </div>
+                )}
+            </div>
+          </div>
+      </div>
               
       {/* Enhanced Stats Footer */}
       <div className="px-4 py-3 bg-gray-800 border-t border-gray-700">
