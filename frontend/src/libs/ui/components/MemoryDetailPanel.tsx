@@ -147,24 +147,6 @@ export const MemoryDetailPanel: React.FC<MemoryDetailPanelProps> = ({ selectedMe
         </div>
       </div>
 
-      {/* Timeline View Button */}
-      <div className="mt-6 md:mt-8">
-        <button className="w-full group relative overflow-hidden rounded-lg md:rounded-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]">
-          {/* Gradient Border Effect */}
-          <div className="absolute inset-0 rounded-lg md:rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 opacity-80 blur-sm group-hover:opacity-100 transition-opacity"></div>
-          
-          {/* Button Background */}
-          <div className="relative bg-gray-900 rounded-lg md:rounded-xl border border-gray-700 group-hover:border-transparent transition-colors">
-            <div className="px-4 md:px-6 py-3 md:py-4 flex items-center justify-center space-x-2 md:space-x-3">
-              <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-white font-medium text-sm md:text-lg">Open in Timeline View</span>
-            </div>
-          </div>
-        </button>
-      </div>
     </div>
   );
 };

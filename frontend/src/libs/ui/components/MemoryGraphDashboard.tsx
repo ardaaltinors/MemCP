@@ -438,6 +438,7 @@ interface MemoryGraphDashboardInnerProps {
   onMemoryCreate?: (memory: CreateMemoryRequest) => Promise<void>;
   onMemoryUpdate?: (id: string, memory: UpdateMemoryRequest) => Promise<void>;
   onMemoryDelete?: (id: string) => Promise<void>;
+  onMemoriesLoaded?: (memories: ApiMemoryNode[]) => void;
 }
 
 // Add Memory Modal Component
@@ -709,6 +710,7 @@ function MemoryGraphDashboardInner({
   onMemoryCreate,
   onMemoryUpdate,
   onMemoryDelete,
+  onMemoriesLoaded,
 }: MemoryGraphDashboardInnerProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -744,6 +746,11 @@ function MemoryGraphDashboardInner({
       }
 
       const data = await getMemoryGraph(token);
+      
+      // Pass raw memories to parent for timeline
+      if (onMemoriesLoaded) {
+        onMemoriesLoaded(data.nodes);
+      }
       
       const { nodes: transformedNodes, edges: transformedEdges } = transformApiDataToReactFlow(
         data.nodes,
@@ -1031,7 +1038,8 @@ export function MemoryGraphDashboard({
   onNodeSelect,
   onMemoryCreate,
   onMemoryUpdate,
-  onMemoryDelete 
+  onMemoryDelete,
+  onMemoriesLoaded 
 }: MemoryGraphDashboardInnerProps) {
   return (
     <ReactFlowProvider>
@@ -1040,6 +1048,7 @@ export function MemoryGraphDashboard({
         onMemoryCreate={onMemoryCreate}
         onMemoryUpdate={onMemoryUpdate}
         onMemoryDelete={onMemoryDelete}
+        onMemoriesLoaded={onMemoriesLoaded}
       />
     </ReactFlowProvider>
   );
