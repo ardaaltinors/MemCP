@@ -307,7 +307,7 @@ def update_profile_background(
             db.close()
             logger.debug(f"Database session closed for user {user_id}")
             
-    except uuid.ValueError as e:
+    except ValueError as e:
         logger.error(f"Invalid user ID format: {user_id_str}", exc_info=True)
         raise UserContextError(
             message="Invalid user ID format",
