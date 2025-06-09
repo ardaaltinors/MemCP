@@ -7,3 +7,5 @@ export * from "./MemoryGraph";
 export * from "./MemoryDetailPanel";
 export * from "./MemoryGraphDashboard";
 export * from "./DashboardContainer";
+export * from "./CredentialsContainer";
+export * from "./DashboardHeader";

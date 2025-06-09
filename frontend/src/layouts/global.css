@@ -241,3 +241,18 @@
   color: #ffffff;
 }
 
+/* Header glow effect */
+.header-glow::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(59, 130, 246, 0.5) 50%, 
+    transparent 100%
+  );
+}
+

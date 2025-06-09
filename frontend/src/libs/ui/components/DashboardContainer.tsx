@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MemoryGraphDashboard } from './MemoryGraphDashboard';
 import { MemoryDetailPanel } from './MemoryDetailPanel';
-import { ApiKeyManager } from './ApiKeyManager';
 import { ClientSelector } from './ClientSelector';
 import { createMemory, updateMemory, deleteMemory } from '@libs/api';
 import type { CreateMemoryRequest, UpdateMemoryRequest } from '@libs/types';
@@ -192,7 +191,6 @@ interface MemoryData {
 
 export const DashboardContainer: React.FC = () => {
   const [selectedMemory, setSelectedMemory] = useState<MemoryData | undefined>(undefined);
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -263,34 +261,14 @@ export const DashboardContainer: React.FC = () => {
     }
   };
 
-  // Set up event listeners for header buttons
+  // Set up event listeners for header buttons (for settings only now)
   useEffect(() => {
-    const handleApiKeyClick = () => setShowApiKeyModal(true);
     const handleClientClick = () => setShowClientModal(true);
 
     // Add event listeners
-    window.addEventListener('show-api-key-modal', handleApiKeyClick);
     window.addEventListener('show-client-modal', handleClientClick);
 
-    // Set up button click handlers after component mounts
-    const setupButtons = () => {
-      const apiKeyButton = document.querySelector('button[aria-label="API Key"]');
-      const settingsButton = document.querySelector('button[aria-label="Settings"]');
-
-      if (apiKeyButton) {
-        apiKeyButton.addEventListener('click', handleApiKeyClick);
-      }
-
-      if (settingsButton) {
-        settingsButton.addEventListener('click', handleClientClick);
-      }
-    };
-
-    // Delay to ensure DOM is ready
-    setTimeout(setupButtons, 100);
-
     return () => {
-      window.removeEventListener('show-api-key-modal', handleApiKeyClick);
       window.removeEventListener('show-client-modal', handleClientClick);
     };
   }, []);
@@ -323,25 +301,6 @@ export const DashboardContainer: React.FC = () => {
         </div>
       </div>
 
-      {/* API Key Modal */}
-      {showApiKeyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-white">API Key Management</h2>
-              <button
-                onClick={() => setShowApiKeyModal(false)}
-                className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <ApiKeyManager />
-          </div>
-        </div>
-      )}
 
       {/* Client Selector Modal */}
       {showClientModal && (
