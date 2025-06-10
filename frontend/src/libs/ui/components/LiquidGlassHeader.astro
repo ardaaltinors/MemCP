@@ -1,11 +1,12 @@
 ---
+import { Image } from "astro:assets";
 import { Logo } from "@static/images";
 ---
 
 <header class="liquid-glass-header">
     <div class="header-content">
         <div class="logo-container">
-            <img src={Logo.src} alt="MemCP" class="logo" />
+            <Image src={Logo} alt="MemCP" class="logo" />
             <span class="logo-text">MemCP</span>
         </div>
         

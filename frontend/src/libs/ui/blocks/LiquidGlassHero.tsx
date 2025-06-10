@@ -96,7 +96,7 @@ export const LiquidGlassHero: React.FC<LiquidGlassHeroProps> = ({ title, descrip
             
             <div className="hero-content">
                 <div className="hero-badge liquid-glass">
-                    <span className="badge-text">AI Memory Platform</span>
+                    <span className="badge-text">AI Memory MCP Server</span>
                 </div>
                 
                 <h1 className="hero-title">
@@ -148,14 +148,14 @@ export const LiquidGlassHero: React.FC<LiquidGlassHeroProps> = ({ title, descrip
                 </div>
             </div>
             
-            <style jsx>{`
+            <style>{`
                 .liquid-glass-hero {
                     position: relative;
                     min-height: 100vh;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    padding: 120px 40px 80px;
+                    padding: 60px 40px 80px;
                     overflow: hidden;
                 }
                 
@@ -385,8 +385,6 @@ export const LiquidGlassHero: React.FC<LiquidGlassHeroProps> = ({ title, descrip
                     right: -100px;
                     width: 400px;
                     height: 400px;
-                    background: rgba(255, 255, 255, 0.25);
-                    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
                     backdrop-filter: blur(4px);
                     -webkit-backdrop-filter: blur(4px);
                     border: 1px solid rgba(255, 255, 255, 0.18);

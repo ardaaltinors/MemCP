@@ -1,0 +1,22 @@
+---
+import Layout from "layouts/Layout.astro";
+import { Hero } from "@libs/ui/blocks/Hero";
+import { ProblemSolution, HowItWorks, Features, GetStarted } from "@libs/ui/blocks";
+---
+
+<Layout
+    title="MemCP"
+    description="Connect your AI conversations. Remember everything. Everywhere."
+>
+    <main class="">
+        <Hero
+            title="Portable Agent Memory."
+            description="Connect your AI conversations. Remember everything. Everywhere."
+            client:load
+        />
+        <ProblemSolution client:visible />
+        <HowItWorks client:visible />
+        <Features client:visible />
+        <GetStarted client:visible />
+    </main>
+</Layout>

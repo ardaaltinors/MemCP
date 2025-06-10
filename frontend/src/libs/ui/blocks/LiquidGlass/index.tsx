@@ -45,7 +45,7 @@ export const LiquidGlassProblemSolution: React.FC = () => {
                                 <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                             </svg>
                         </div>
-                        <h3 className="card-title">Siloed Knowledge</h3>
+                        <h3 className="card-title">Fragmented Knowledge</h3>
                         <p className="card-description">
                             Each AI platform keeps its memory locked away, preventing cross-platform intelligence.
                         </p>
@@ -74,12 +74,6 @@ export const LiquidGlassProblemSolution: React.FC = () => {
                                 </svg>
                                 <span>Structured knowledge graphs</span>
                             </div>
-                            <div className="feature-item">
-                                <svg className="feature-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
-                                </svg>
-                                <span>Privacy-first architecture</span>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -103,7 +97,7 @@ export const LiquidGlassProblemSolution: React.FC = () => {
                 </defs>
             </svg>
             
-            <style jsx>{`
+            <style>{`
                 .liquid-glass-section {
                     padding: 120px 40px;
                     position: relative;
@@ -361,7 +355,7 @@ export const LiquidGlassHowItWorks: React.FC = () => {
                 </div>
             </div>
             
-            <style jsx>{`
+            <style>{`
                 .how-it-works {
                     background: rgba(64, 156, 255, 0.05);
                 }
@@ -515,7 +509,7 @@ export const LiquidGlassFeatures: React.FC = () => {
         {
             icon: '🔒',
             title: 'Privacy First',
-            description: 'Your memories are encrypted and only accessible by you.'
+            description: 'Your memories are only accessible by you.'
         },
         {
             icon: '⚡',
@@ -533,9 +527,9 @@ export const LiquidGlassFeatures: React.FC = () => {
             description: 'See and explore your memories as an interactive network.'
         },
         {
-            icon: '🚀',
-            title: 'API Access',
-            description: 'Build custom integrations with our powerful REST API.'
+            icon: '🔌',
+            title: 'MCP Access',
+            description: 'Ease of use with only one URL.'
         }
     ];
     
@@ -562,7 +556,7 @@ export const LiquidGlassFeatures: React.FC = () => {
                 </div>
             </div>
             
-            <style jsx>{`
+            <style>{`
                 .features-grid {
                     display: grid;
                     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -655,11 +649,10 @@ export const LiquidGlassGetStarted: React.FC = () => {
                             <span>View Documentation</span>
                         </button>
                     </div>
-                    <p className="cta-note">No credit card required • 14-day free trial</p>
                 </div>
             </div>
             
-            <style jsx>{`
+            <style>{`
                 .get-started {
                     padding-bottom: 160px;
                 }
