@@ -198,6 +198,46 @@ class VectorStore:
                 original_exception=e,
             )
 
+    async def delete_memory(self, memory_id: str, user_id: uuid.UUID) -> None:
+        """Delete a memory from the vector database."""
+        try:
+            # First verify the memory belongs to the user before deletion
+            points = await self.client.retrieve(
+                collection_name=self.collection_name,
+                ids=[memory_id],
+                with_payload=True
+            )
+            
+            if not points:
+                raise QdrantServiceError(
+                    message="Memory not found in vector database",
+                    operation="delete",
+                    collection_name=self.collection_name
+                )
+            
+            # Check if the memory belongs to the user
+            if points[0].payload.get("user_id") == str(user_id):
+                await self.client.delete(
+                    collection_name=self.collection_name,
+                    points_selector=[memory_id],
+                    wait=True  # Ensure the operation completes
+                )
+            else:
+                raise QdrantServiceError(
+                    message="User can only delete their own memories",
+                    operation="delete",
+                    collection_name=self.collection_name
+                )
+        except Exception as e:
+            if isinstance(e, QdrantServiceError):
+                raise
+            raise QdrantServiceError(
+                message="Failed to delete memory from vector database",
+                operation="delete",
+                collection_name=self.collection_name,
+                original_exception=e
+            )
+
     async def close(self):
         """Close the async client connection."""
         try:
