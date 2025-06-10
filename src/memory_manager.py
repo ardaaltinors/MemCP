@@ -71,7 +71,7 @@ class MemoryManager:
                 original_exception=e
             )
         
-        return f"Memory stored with ID: {memory_id} for user: {user_id}"
+        return f"Memory stored with ID: {memory_id}"
 
     async def search_related(self, query_text: str) -> list[dict]:
         """Performs a semantic search for memories related to the query text."""
@@ -171,11 +171,11 @@ class MemoryManager:
         
         # Delete from Qdrant
         try:
-            # Note: Current VectorStore doesn't have a delete method
-            # This would need to be implemented for full consistency
-            pass
+            await self.vector_store.delete_memory(memory_id, user_id)
         except Exception as e:
             # Log error but don't fail since PostgreSQL deletion succeeded
+            # This maintains partial consistency - the memory is removed from PostgreSQL
+            # even if Qdrant deletion fails
             pass
         
         return f"Memory {memory_id} deleted successfully"

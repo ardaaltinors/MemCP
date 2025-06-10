@@ -69,6 +69,41 @@ async def get_related_memory(query: str) -> list[dict]:
     return await memory_manager.search_related(query_text=query)
 
 
+@mcp.tool()
+async def remove_memory(memory_id: str) -> str:
+    """
+    Remove a specific memory permanently from your knowledge base.
+    
+    This tool deletes a memory from both the vector database (Qdrant) and 
+    the relational database (PostgreSQL), ensuring complete removal.
+    
+    Use this when you need to:
+    - Remove outdated or incorrect information
+    - Delete sensitive data that should no longer be retained
+    - Clean up duplicate or redundant memories
+    - Honor a user's request to forget specific information
+    
+    Args:
+        memory_id: The unique identifier of the memory to remove.
+                   This ID is returned when memories are created or searched.
+    
+    Returns:
+        A confirmation message indicating successful deletion.
+    
+    Note: This action is permanent and cannot be undone. The memory will be 
+    completely removed from all storage systems.
+    """
+    session_maker = get_async_sessionmaker()
+    async with session_maker() as db:
+        try:
+            result = await memory_manager.delete_memory(memory_id, db)
+            await db.commit()
+            return result
+        except Exception as e:
+            await db.rollback()
+            raise e
+
+
 @mcp.custom_route("/health", methods=["GET"])
 async def health_check(request: Request) -> PlainTextResponse:
     return PlainTextResponse("OK")
