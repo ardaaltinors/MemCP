@@ -76,14 +76,22 @@ import { LiquidGlassProblemSolution, LiquidGlassHowItWorks, LiquidGlassFeatures,
             
             /* Liquid Glass base component */
             .liquid-glass {
-                background: var(--glass-tint-light);
-                backdrop-filter: blur(var(--glass-blur-radius)) saturate(180%);
-                -webkit-backdrop-filter: blur(var(--glass-blur-radius)) saturate(180%);
+                background: rgba(255, 255, 255, 0.25);
+                box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                backdrop-filter: blur(4px);
+                -webkit-backdrop-filter: blur(4px);
+                border-radius: 10px;
                 border: 1px solid rgba(255, 255, 255, 0.18);
-                border-radius: 20px;
                 position: relative;
                 overflow: hidden;
                 transition: all var(--animation-duration) var(--transition-fluid);
+            }
+            
+            @media (prefers-color-scheme: dark) {
+                .liquid-glass {
+                    background: rgba(255, 255, 255, 0.1);
+                    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                }
             }
             
             .liquid-glass::before {
@@ -175,9 +183,10 @@ import { LiquidGlassProblemSolution, LiquidGlassHowItWorks, LiquidGlassFeatures,
             /* Content wrapper */
             .content-wrapper {
                 position: relative;
-                z-index: 1;
+                z-index: 10;
                 min-height: 100vh;
             }
+            
         </style>
     </head>
     <body>

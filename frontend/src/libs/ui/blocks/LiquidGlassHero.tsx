@@ -194,7 +194,12 @@ export const LiquidGlassHero: React.FC<LiquidGlassHeroProps> = ({ title, descrip
                     align-items: center;
                     padding: 8px 20px;
                     margin-bottom: 24px;
+                    background: rgba(255, 255, 255, 0.25);
+                    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
                     border-radius: 30px;
+                    border: 1px solid rgba(255, 255, 255, 0.18);
                     animation: pulse 3s ease-in-out infinite;
                 }
                 
@@ -279,7 +284,11 @@ export const LiquidGlassHero: React.FC<LiquidGlassHeroProps> = ({ title, descrip
                 }
                 
                 .primary-btn {
-                    background: linear-gradient(135deg, #409cff 0%, #ba40ff 100%);
+                    background: linear-gradient(135deg, rgba(64, 156, 255, 0.85) 0%, rgba(186, 64, 255, 0.85) 100%);
+                    box-shadow: 0 8px 32px 0 rgba(64, 156, 255, 0.37);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
+                    border: 1px solid rgba(255, 255, 255, 0.18);
                     color: white;
                 }
                 
@@ -289,23 +298,29 @@ export const LiquidGlassHero: React.FC<LiquidGlassHeroProps> = ({ title, descrip
                 }
                 
                 .secondary-btn {
-                    background: rgba(255, 255, 255, 0.3);
+                    background: rgba(255, 255, 255, 0.25);
+                    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
                     color: #1d1d1f;
-                    border: 1px solid rgba(255, 255, 255, 0.4);
+                    border: 1px solid rgba(255, 255, 255, 0.18);
                 }
                 
                 @media (prefers-color-scheme: dark) {
                     .secondary-btn {
                         background: rgba(255, 255, 255, 0.1);
+                        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                        backdrop-filter: blur(4px);
+                        -webkit-backdrop-filter: blur(4px);
                         color: #f5f5f7;
-                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        border: 1px solid rgba(255, 255, 255, 0.18);
                     }
                 }
                 
                 .secondary-btn:hover {
                     transform: translateY(-3px);
-                    background: rgba(255, 255, 255, 0.5);
-                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+                    background: rgba(255, 255, 255, 0.35);
+                    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.45);
                 }
                 
                 .btn-icon {
@@ -326,14 +341,20 @@ export const LiquidGlassHero: React.FC<LiquidGlassHeroProps> = ({ title, descrip
                 
                 .stat-item {
                     padding: 24px;
+                    background: rgba(255, 255, 255, 0.25);
+                    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
                     border-radius: 16px;
+                    border: 1px solid rgba(255, 255, 255, 0.18);
                     text-align: center;
                     transition: all 0.3s ease;
                 }
                 
                 .stat-item:hover {
                     transform: translateY(-4px);
-                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+                    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.45);
+                    background: rgba(255, 255, 255, 0.35);
                 }
                 
                 .stat-number {
@@ -364,6 +385,11 @@ export const LiquidGlassHero: React.FC<LiquidGlassHeroProps> = ({ title, descrip
                     right: -100px;
                     width: 400px;
                     height: 400px;
+                    background: rgba(255, 255, 255, 0.25);
+                    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
+                    border: 1px solid rgba(255, 255, 255, 0.18);
                     padding: 40px;
                     opacity: 0.8;
                 }

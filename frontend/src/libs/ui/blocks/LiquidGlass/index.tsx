@@ -166,7 +166,12 @@ export const LiquidGlassProblemSolution: React.FC = () => {
                 
                 .problem-card {
                     padding: 40px;
+                    background: rgba(255, 255, 255, 0.25);
+                    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
                     border-radius: 24px;
+                    border: 1px solid rgba(255, 255, 255, 0.18);
                     text-align: center;
                     transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
                     animation: fadeInUp 0.8s ease-out;
@@ -187,6 +192,8 @@ export const LiquidGlassProblemSolution: React.FC = () => {
                 
                 .problem-card:hover {
                     transform: translateY(-8px) scale(1.02);
+                    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.45);
+                    background: rgba(255, 255, 255, 0.35);
                 }
                 
                 .card-icon {
@@ -228,7 +235,12 @@ export const LiquidGlassProblemSolution: React.FC = () => {
                 .solution-content {
                     max-width: 800px;
                     padding: 60px;
+                    background: rgba(255, 255, 255, 0.25);
+                    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
                     border-radius: 32px;
+                    border: 1px solid rgba(255, 255, 255, 0.18);
                     text-align: center;
                     animation: morphing 8s ease-in-out infinite;
                 }
@@ -264,7 +276,11 @@ export const LiquidGlassProblemSolution: React.FC = () => {
                     align-items: center;
                     gap: 12px;
                     padding: 12px 24px;
-                    background: rgba(64, 156, 255, 0.1);
+                    background: rgba(255, 255, 255, 0.25);
+                    box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.3);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
+                    border: 1px solid rgba(255, 255, 255, 0.18);
                     border-radius: 100px;
                     font-size: 15px;
                     color: #409cff;
@@ -303,7 +319,7 @@ export const LiquidGlassProblemSolution: React.FC = () => {
 
 export const LiquidGlassHowItWorks: React.FC = () => {
     return (
-        <section className="liquid-glass-section how-it-works">
+        <section id="how-it-works" className="liquid-glass-section how-it-works">
             <div className="section-container">
                 <div className="section-header">
                     <h2 className="section-title">
@@ -362,7 +378,12 @@ export const LiquidGlassHowItWorks: React.FC = () => {
                     flex: 1;
                     max-width: 320px;
                     padding: 48px 32px;
+                    background: rgba(255, 255, 255, 0.25);
+                    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
                     border-radius: 24px;
+                    border: 1px solid rgba(255, 255, 255, 0.18);
                     text-align: center;
                     transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
                     animation: fadeInUp 0.8s ease-out;
@@ -383,6 +404,8 @@ export const LiquidGlassHowItWorks: React.FC = () => {
                 
                 .step-card:hover {
                     transform: translateY(-8px) scale(1.05);
+                    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.45);
+                    background: rgba(255, 255, 255, 0.35);
                 }
                 
                 .step-number {
@@ -517,7 +540,7 @@ export const LiquidGlassFeatures: React.FC = () => {
     ];
     
     return (
-        <section className="liquid-glass-section features">
+        <section id="features" className="liquid-glass-section features">
             <div className="section-container">
                 <div className="section-header">
                     <h2 className="section-title">
@@ -548,7 +571,12 @@ export const LiquidGlassFeatures: React.FC = () => {
                 
                 .feature-card {
                     padding: 40px 32px;
+                    background: rgba(255, 255, 255, 0.25);
+                    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
                     border-radius: 24px;
+                    border: 1px solid rgba(255, 255, 255, 0.18);
                     text-align: center;
                     transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
                     animation: fadeInUp 0.8s ease-out;
@@ -557,6 +585,8 @@ export const LiquidGlassFeatures: React.FC = () => {
                 
                 .feature-card:hover {
                     transform: translateY(-8px) scale(1.02);
+                    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.45);
+                    background: rgba(255, 255, 255, 0.35);
                 }
                 
                 .feature-icon {
@@ -605,7 +635,7 @@ export const LiquidGlassFeatures: React.FC = () => {
 
 export const LiquidGlassGetStarted: React.FC = () => {
     return (
-        <section className="liquid-glass-section get-started">
+        <section id="get-started" className="liquid-glass-section get-started">
             <div className="section-container">
                 <div className="cta-card liquid-glass layer-3">
                     <h2 className="cta-title">
@@ -685,7 +715,11 @@ export const LiquidGlassGetStarted: React.FC = () => {
                 }
                 
                 .primary-btn {
-                    background: linear-gradient(135deg, #409cff 0%, #ba40ff 100%);
+                    background: linear-gradient(135deg, rgba(64, 156, 255, 0.85) 0%, rgba(186, 64, 255, 0.85) 100%);
+                    box-shadow: 0 8px 32px 0 rgba(64, 156, 255, 0.37);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
+                    border: 1px solid rgba(255, 255, 255, 0.18);
                     color: white;
                 }
                 
@@ -695,23 +729,29 @@ export const LiquidGlassGetStarted: React.FC = () => {
                 }
                 
                 .secondary-btn {
-                    background: rgba(255, 255, 255, 0.3);
+                    background: rgba(255, 255, 255, 0.25);
+                    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
                     color: #1d1d1f;
-                    border: 1px solid rgba(255, 255, 255, 0.4);
+                    border: 1px solid rgba(255, 255, 255, 0.18);
                 }
                 
                 @media (prefers-color-scheme: dark) {
                     .secondary-btn {
                         background: rgba(255, 255, 255, 0.1);
+                        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                        backdrop-filter: blur(4px);
+                        -webkit-backdrop-filter: blur(4px);
                         color: #f5f5f7;
-                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        border: 1px solid rgba(255, 255, 255, 0.18);
                     }
                 }
                 
                 .secondary-btn:hover {
                     transform: translateY(-3px);
-                    background: rgba(255, 255, 255, 0.5);
-                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+                    background: rgba(255, 255, 255, 0.35);
+                    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.45);
                 }
                 
                 .btn-icon {

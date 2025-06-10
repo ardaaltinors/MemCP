@@ -62,7 +62,7 @@ const MemoryNode = ({ data, selected }: { data: MemoryNodeData; selected?: boole
       <div
         className={`relative w-full h-full bg-gradient-to-br ${colorGradient} rounded-full border-2 ${
           selected ? 'border-white' : 'border-gray-600'
-        } shadow-lg flex items-center justify-center transition-all duration-300 cursor-pointer hover:shadow-xl`}
+        } flex items-center justify-center transition-all duration-300 cursor-pointer`}
       >
         {/* Handles for connections */}
         <Handle type="target" position={Position.Left} className="!bg-gray-300 !border-gray-600" />

@@ -9,3 +9,4 @@ export * from "./MemoryGraphDashboard";
 export * from "./DashboardContainer";
 export * from "./CredentialsContainer";
 export * from "./DashboardHeader";
+export * from "./MouseFollowingNodes";

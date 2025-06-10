@@ -10,9 +10,9 @@ import { Logo } from "@static/images";
         </div>
         
         <nav class="nav-menu">
-            <a href="#features" class="nav-link">Features</a>
-            <a href="#how-it-works" class="nav-link">How it Works</a>
-            <a href="#get-started" class="nav-link">Get Started</a>
+            <a href="#features" class="nav-link smooth-scroll">Features</a>
+            <a href="#how-it-works" class="nav-link smooth-scroll">How it Works</a>
+            <a href="#get-started" class="nav-link smooth-scroll">Get Started</a>
         </nav>
         
         <div class="auth-buttons">
@@ -21,6 +21,31 @@ import { Logo } from "@static/images";
         </div>
     </div>
 </header>
+
+<script>
+    // Smooth scrolling for navigation links
+    document.addEventListener('DOMContentLoaded', () => {
+        const smoothScrollLinks = document.querySelectorAll('.smooth-scroll');
+        
+        smoothScrollLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.getAttribute('href')?.slice(1);
+                if (targetId) {
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) {
+                        const headerHeight = 120; // Account for fixed header
+                        const targetPosition = targetElement.offsetTop - headerHeight;
+                        window.scrollTo({
+                            top: targetPosition,
+                            behavior: 'smooth'
+                        });
+                    }
+                }
+            });
+        });
+    });
+</script>
 
 <style>
     .liquid-glass-header {
@@ -31,9 +56,9 @@ import { Logo } from "@static/images";
         width: calc(100% - 40px);
         max-width: 1200px;
         z-index: 1000;
-        background: rgba(255, 255, 255, 0.72);
-        backdrop-filter: blur(30px) saturate(180%);
-        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        background: rgba(255, 255, 255, 0.02);
+        backdrop-filter: blur(10px) saturate(180%);
+        -webkit-backdrop-filter: blur(10px) saturate(180%);
         border: 1px solid rgba(255, 255, 255, 0.18);
         border-radius: 20px;
         padding: 16px 32px;
@@ -58,6 +83,7 @@ import { Logo } from "@static/images";
         display: flex;
         align-items: center;
         justify-content: space-between;
+        position: relative; /* Create positioning context */
     }
     
     .logo-container {
@@ -89,6 +115,9 @@ import { Logo } from "@static/images";
     .nav-menu {
         display: flex;
         gap: 40px;
+        position: absolute; /* Position relative to header-content */
+        left: 50%; /* Move left edge to the center */
+        transform: translateX(-50%); /* Shift left by half its own width */
     }
     
     .nav-link {
@@ -140,27 +169,37 @@ import { Logo } from "@static/images";
     
     .login-btn {
         color: #1d1d1f;
-        background: rgba(255, 255, 255, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.25);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
     }
     
     @media (prefers-color-scheme: dark) {
         .login-btn {
             color: #f5f5f7;
             background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
         }
     }
     
     .login-btn:hover {
-        background: rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.35);
         transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.45);
     }
     
     .register-btn {
         color: white;
-        background: linear-gradient(135deg, #409cff 0%, #ba40ff 100%);
+        background: linear-gradient(135deg, rgba(64, 156, 255, 0.8) 0%, rgba(186, 64, 255, 0.8) 100%);
+        box-shadow: 0 8px 32px 0 rgba(64, 156, 255, 0.37);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
         position: relative;
         z-index: 1;
     }
