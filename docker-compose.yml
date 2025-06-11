@@ -173,11 +173,7 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
-      # Set absolute memory limit
-      RABBITMQ_VM_MEMORY_HIGH_WATERMARK: "200000000"
-      # Simplified node name
       RABBITMQ_NODENAME: rabbit@rabbitmq
-      # Erlang cookie
       RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-secretcookie}
     
     networks:
