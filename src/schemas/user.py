@@ -57,4 +57,8 @@ class ConnectionUrlResponse(BaseModel):
     created_at: datetime
     
     class Config:
-        from_attributes = True 
+        from_attributes = True
+
+class PasswordChangeRequest(BaseModel):
+    old_password: str
+    new_password: str 
