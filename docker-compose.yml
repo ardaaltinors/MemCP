@@ -198,7 +198,7 @@ services:
     volumes:
       - redis_data:/data
     
-    command: redis-server --save 20 1 --loglevel warning --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --save 60 1 --loglevel warning --maxmemory 256mb --maxmemory-policy allkeys-lru --stop-writes-on-bgsave-error no
     
     networks:
       - memory-mcp-network
@@ -227,7 +227,7 @@ services:
     container_name: memory-mcp-celery-worker
     restart: unless-stopped
     
-    command: celery -A src.celery_app worker --loglevel=info --concurrency=4
+    command: celery -A src.celery_app worker --loglevel=info --concurrency=4 --without-gossip --without-mingle --without-heartbeat
     
     environment:
       - PYTHONPATH=/app
