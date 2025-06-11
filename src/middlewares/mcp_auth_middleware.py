@@ -5,7 +5,7 @@ from starlette.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from src.db.database import get_async_sessionmaker
 from src.crud.crud_user import get_user_by_api_key
-from src.core.context import set_current_user_id
+# Removed set_current_user_id import - no longer using global context
 from src.exceptions import InvalidAPIKeyError, InactiveUserError
 from src.exceptions.handlers import ExceptionHandler
 
@@ -43,8 +43,7 @@ class UserCredentialMiddleware(BaseHTTPMiddleware):
                             
                             # Store user info in request state for later use
                             request.state.user = user
-                            # Set the user_id in thread-local context for memory_manager
-                            set_current_user_id(user.id)
+                            # No longer setting global context - user_id passed explicitly
                         else:
                             if self.debug:
                                 logger.warning(f"❌ Inactive user attempted access: {user.username} ({user.email})")

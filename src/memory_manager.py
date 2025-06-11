@@ -2,7 +2,6 @@ import uuid
 from typing import Optional, TYPE_CHECKING
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.context import get_current_user_id
 from src.db.models import Memory
 from src.exceptions import UserContextError, DatabaseOperationError
 from src.utils.vector_store import VectorStore
@@ -31,20 +30,20 @@ class MemoryManager:
             upper_score_threshold=upper_score_threshold
         )
 
-    async def store(self, content: str, db: AsyncSession, tags: Optional[list[str]] = None) -> str:
+    async def store(self, content: str, db: AsyncSession, user_id: uuid.UUID, tags: Optional[list[str]] = None) -> str:
         """
         Stores a new memory entry in both vector and relational databases.
         
         Args:
             content: The content to store
             db: Database session (injected via FastAPI dependency)
+            user_id: The ID of the user storing the memory
             tags: Optional tags for the memory
         """
-        # Get current user context
-        user_id = get_current_user_id()
+        # Validate user_id is provided
         if user_id is None:
             raise UserContextError(
-                message="User context is required for memory storage",
+                message="User ID is required for memory storage",
                 operation="store_memory"
             )
         
@@ -65,8 +64,7 @@ class MemoryManager:
             db.add(db_memory)
             await db.flush()  # Use flush instead of commit as get_async_db handles commit
         except Exception as e:
-            # If relational DB fails, we should ideally remove from vector DB too
-            # This is part of the data consistency issue mentioned in IMPLEMENTATION_ISSUES.md
+            # TODO: if relational DB fails, we should ideally remove from vector DB too
             raise DatabaseOperationError(
                 message="Failed to store memory in relational database",
                 operation="insert",
@@ -76,28 +74,27 @@ class MemoryManager:
         
         return f"Memory stored with ID: {memory_id}"
 
-    async def search_related(self, query_text: str) -> list[dict]:
+    async def search_related(self, query_text: str, user_id: uuid.UUID) -> list[dict]:
         """Performs a semantic search for memories related to the query text."""
-        # Get current user context
-        user_id = get_current_user_id()
+        # Validate user_id is provided
         if user_id is None:
             raise UserContextError(
-                message="User context is required for memory search",
+                message="User ID is required for memory search",
                 operation="search_memories"
             )
         
         return await self.vector_store.search_memories(query_text, user_id)
 
-    async def update_memory(self, memory_id: str, content: str, db: AsyncSession, tags: Optional[list[str]] = None) -> str:
+    async def update_memory(self, memory_id: str, content: str, db: AsyncSession, user_id: uuid.UUID, tags: Optional[list[str]] = None) -> str:
         """
         Updates a memory in both vector and relational databases.
         """
         from src.crud.crud_memory import update_memory
         
-        user_id = get_current_user_id()
+        # Validate user_id is provided
         if user_id is None:
             raise UserContextError(
-                message="User context is required for memory update",
+                message="User ID is required for memory update",
                 operation="update_memory"
             )
         
@@ -136,16 +133,16 @@ class MemoryManager:
         
         return f"Memory {memory_id} updated successfully"
 
-    async def delete_memory(self, memory_id: str, db: AsyncSession) -> str:
+    async def delete_memory(self, memory_id: str, db: AsyncSession, user_id: uuid.UUID) -> str:
         """
         Deletes a memory from both vector and relational databases.
         """
         from src.crud.crud_memory import delete_memory
         
-        user_id = get_current_user_id()
+        # Validate user_id is provided
         if user_id is None:
             raise UserContextError(
-                message="User context is required for memory deletion",
+                message="User ID is required for memory deletion",
                 operation="delete_memory"
             )
         
@@ -183,17 +180,17 @@ class MemoryManager:
         
         return f"Memory {memory_id} deleted successfully"
 
-    async def delete_all_user_memories(self, db: AsyncSession) -> str:
+    async def delete_all_user_memories(self, db: AsyncSession, user_id: uuid.UUID) -> str:
         """
         Delete all memories for a user from both PostgreSQL and Qdrant, plus processed profile.
         """
         from src.crud.crud_memory import delete_all_user_memories
         from src.crud.crud_processed_user_profile import delete_processed_user_profile
         
-        user_id = get_current_user_id()
+        # Validate user_id is provided
         if user_id is None:
             raise UserContextError(
-                message="User context is required for bulk memory deletion",
+                message="User ID is required for bulk memory deletion",
                 operation="delete_all_memories"
             )
         
@@ -228,12 +225,12 @@ class MemoryManager:
         profile_msg = " and processed profile" if profile_deleted else ""
         return f"Deleted {postgres_count} memories from PostgreSQL, {qdrant_count} from Qdrant{profile_msg}"
 
-    async def process_context(self, prompt: str, tags: Optional[list[str]] = None) -> str:
+    async def process_context(self, prompt: str, user_id: uuid.UUID, tags: Optional[list[str]] = None) -> str:
         """Record the user's message and return the synthesized profile."""
-        user_id = get_current_user_id()
+        # Validate user_id is provided
         if user_id is None:
             raise UserContextError(
-                message="User context is required for profile processing",
+                message="User ID is required for profile processing",
                 operation="process_context"
             )
 
@@ -243,6 +240,7 @@ class MemoryManager:
         self, 
         memories: list[dict],
         db: AsyncSession,
+        user_id: uuid.UUID,
         ctx: Optional['Context'] = None
     ) -> str:
         """
@@ -251,12 +249,13 @@ class MemoryManager:
         Args:
             memories: List of dicts with 'content' and optional 'tags' keys
             db: Database session
+            user_id: The ID of the user storing the memories
             ctx: Optional FastMCP context for progress reporting
         """
-        user_id = get_current_user_id()
+        # Validate user_id is provided
         if user_id is None:
             raise UserContextError(
-                message="User context is required for batch memory storage",
+                message="User ID is required for batch memory storage",
                 operation="store_batch"
             )
         

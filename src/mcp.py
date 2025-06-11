@@ -8,7 +8,7 @@ from src.memory_manager import MemoryManager
 from src.db import init_db
 from src.db.database import get_async_sessionmaker
 from src.middlewares import UserCredentialMiddleware
-from src.core.context import get_current_user_id
+from src.utils.mcp_context import get_user_id_from_context
 
 
 # Initialize the database
@@ -45,14 +45,16 @@ async def remember_fact(
     IMPORTANT: Always phrase the 'content' from the user's point of view, using "I", "my", "me" etc...
     """
     if ctx:
-        user_id = get_current_user_id()
+        user_id = get_user_id_from_context(ctx)
         await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Storing new memory with {len(tags) if tags else 0} tags")
         await ctx.debug(f"Memory content length: {len(content)} characters")
     
     session_maker = get_async_sessionmaker()
     async with session_maker() as db:
         try:
-            result = await memory_manager.store(content, db, tags)
+            # Get user_id from context
+            user_id = get_user_id_from_context(ctx)
+            result = await memory_manager.store(content, db, user_id, tags)
             await db.commit()  # Explicitly commit the transaction
             
             if ctx:
@@ -78,11 +80,13 @@ async def record_and_get_context(
     This ensures that all interactions are recorded as context for future reasoning.
     """
     if ctx:
-        user_id = get_current_user_id()
+        user_id = get_user_id_from_context(ctx)
         await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Processing user context from message")
     
     try:
-        llm_response = await memory_manager.process_context(prompt)
+        # Get user_id from context
+        user_id = get_user_id_from_context(ctx)
+        llm_response = await memory_manager.process_context(prompt, user_id)
         
         if ctx:
             await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Returning previously synthesized user data.")
@@ -109,11 +113,13 @@ async def get_related_memory(
     This method is called EVERYTIME the user asks anything.
     """
     if ctx:
-        user_id = get_current_user_id()
+        user_id = get_user_id_from_context(ctx)
         await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Searching for memories related to: {query[:50]}...")
         
     try:
-        results = await memory_manager.search_related(query_text=query)
+        # Get user_id from context
+        user_id = get_user_id_from_context(ctx)
+        results = await memory_manager.search_related(query_text=query, user_id=user_id)
         
         if ctx:
             await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Found {len(results)} related memories")
@@ -142,13 +148,15 @@ async def remove_memory(
     - Honor a user's request to forget specific information
     """
     if ctx:
-        user_id = get_current_user_id()
+        user_id = get_user_id_from_context(ctx)
         await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Removing memory with ID: {memory_id}")
         
     session_maker = get_async_sessionmaker()
     async with session_maker() as db:
         try:
-            result = await memory_manager.delete_memory(memory_id, db)
+            # Get user_id from context
+            user_id = get_user_id_from_context(ctx)
+            result = await memory_manager.delete_memory(memory_id, db, user_id)
             await db.commit()
             
             if ctx:
@@ -182,13 +190,15 @@ async def store_memories_batch(
     The tool will report progress as it processes the memories.
     """
     if ctx:
-        user_id = get_current_user_id()
+        user_id = get_user_id_from_context(ctx)
         await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Starting batch storage of {len(memories)} memories")
     
     session_maker = get_async_sessionmaker()
     async with session_maker() as db:
         try:
-            result = await memory_manager.store_batch(memories, db, ctx)
+            # Get user_id from context
+            user_id = get_user_id_from_context(ctx)
+            result = await memory_manager.store_batch(memories, db, user_id, ctx)
             await db.commit()
             
             if ctx:
