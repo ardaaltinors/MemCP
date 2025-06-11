@@ -162,24 +162,23 @@ services:
   # RabbitMQ Message Broker
   # =============================================================================
   rabbitmq:
-    image: rabbitmq:3.13-management-alpine
+    image: rabbitmq:3.13-alpine
     container_name: memory-mcp-rabbitmq
     restart: unless-stopped
     
-    
+    # Use anonymous volume to avoid permission issues
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - /var/lib/rabbitmq
     
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
-      RABBITMQ_VM_MEMORY_HIGH_WATERMARK: "0.4"
-      # Fix hostname for persistent data
-      RABBITMQ_NODENAME: rabbit@localhost
-      # Erlang cookie for clustering
-      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-secret-cookie}
-      # Disable management plugin startup issues
-      RABBITMQ_MANAGEMENT_LOAD_DEFINITIONS: "false"
+      # Set absolute memory limit
+      RABBITMQ_VM_MEMORY_HIGH_WATERMARK: "200000000"
+      # Simplified node name
+      RABBITMQ_NODENAME: rabbit@rabbitmq
+      # Erlang cookie
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-secretcookie}
     
     networks:
       - memory-mcp-network
@@ -333,10 +332,6 @@ volumes:
   qdrant_data:
     driver: local
     name: memory-mcp-qdrant-data
-  
-  rabbitmq_data:
-    driver: local
-    name: memory-mcp-rabbitmq-data
   
   redis_data:
     driver: local
