@@ -222,7 +222,7 @@ services:
   celery-worker:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.celery
       target: production
     container_name: memory-mcp-celery-worker
     restart: unless-stopped
