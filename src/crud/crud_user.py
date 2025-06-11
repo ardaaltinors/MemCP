@@ -56,7 +56,13 @@ async def update_user(db: AsyncSession, db_user: User, user_in: UserUpdate) -> U
     return db_user
 
 async def authenticate_user(db: AsyncSession, username: str, password: str) -> Optional[User]:
+    # Try to find user by username first
     user = await get_user_by_username(db, username=username)
+    
+    # If not found by username, try by email
+    if not user:
+        user = await get_user_by_email(db, email=username)
+    
     if not user:
         return None
     if not verify_password(password, user.hashed_password):

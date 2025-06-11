@@ -9,6 +9,7 @@ from src.crud import crud_user
 from src.db.database import get_async_db
 from src.db.models.user import User as DBUser
 from src.schemas import user as user_schema, token as token_schema
+from src.core.security import verify_password, get_password_hash
 from src.exceptions import (
     InvalidCredentialsError, InactiveUserError, InvalidAPIKeyError,
     DuplicateRecordError, RecordNotFoundError
@@ -102,10 +103,27 @@ async def create_user(user_in: user_schema.UserCreate, db: AsyncSession = Depend
 async def read_users_me(current_user: DBUser = Depends(get_current_active_user)):
     return current_user
 
-# Example of a protected route
-@router.get("/users/me/items/", tags=["Users"])
-async def read_own_items(current_user: DBUser = Depends(get_current_active_user)):
-    return [{"item_id": "Foo", "owner": current_user.username}]
+
+@router.post("/users/me/password", tags=["Users"])
+async def change_password(
+    password_change: user_schema.PasswordChangeRequest,
+    current_user: DBUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Change the current user's password.
+    """
+    # Verify the old password
+    if not verify_password(password_change.old_password, current_user.hashed_password):
+        raise InvalidCredentialsError(message="Invalid current password")
+    
+    # Update the password
+    current_user.hashed_password = get_password_hash(password_change.new_password)
+    db.add(current_user)
+    await db.flush()
+    await db.refresh(current_user)
+    
+    return {"message": "Password changed successfully"}
 
 
 
