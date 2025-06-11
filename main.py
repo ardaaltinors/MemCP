@@ -23,21 +23,39 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper(),
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Global reference to the MCP server thread
+# Global reference to the MCP server thread and shutdown event
 mcp_thread = None
+mcp_shutdown_event = threading.Event()
+mcp_server = None
 
 # Function to run the MCP server
 def run_mcp_server():
+    global mcp_server
     try:
-        uvicorn.run(
+        # Create server configuration
+        config = uvicorn.Config(
             mcp_app,
             host=MCP_SERVER_HOST,
             port=MCP_SERVER_PORT,
             log_level="info"
         )
+        mcp_server = uvicorn.Server(config)
+        
+        # Run the server
+        mcp_server.run()
     except Exception as e:
         logger.error(f"MCP server failed to start: {e}", exc_info=True)
         raise
+    finally:
+        logger.info("MCP server thread exiting")
+
+async def shutdown_mcp_server():
+    """Gracefully shutdown the MCP server."""
+    global mcp_server
+    if mcp_server:
+        logger.info("Signaling MCP server to shutdown...")
+        mcp_server.should_exit = True
+        mcp_shutdown_event.set()
 
 async def graceful_shutdown():
     """Perform graceful shutdown operations."""
@@ -56,6 +74,10 @@ async def graceful_shutdown():
 def signal_handler(signum, frame):
     """Handle shutdown signals gracefully."""
     logger.info(f"Received signal {signum}, initiating shutdown...")
+    # Signal MCP server to shutdown
+    if mcp_server:
+        mcp_server.should_exit = True
+    mcp_shutdown_event.set()
     # For sync signal handlers, we need to handle async cleanup differently
     # This will be handled by the lifespan context manager
     sys.exit(0)
@@ -75,9 +97,14 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("FastAPI application starting up...")
     try:
-        mcp_thread = threading.Thread(target=run_mcp_server, daemon=True)
+        # Start MCP server thread
+        mcp_thread = threading.Thread(target=run_mcp_server, daemon=False)
         mcp_thread.start()
-        logger.info("MCP server has been initiated in a background thread.")
+        logger.info("MCP server has been initiated in a non-daemon background thread.")
+        
+        # Wait a bit to ensure server starts
+        import time
+        time.sleep(2)
         
         # Verify MCP server started successfully
         if mcp_thread.is_alive():
@@ -97,13 +124,23 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("FastAPI application shutting down...")
     try:
+        # First shutdown MCP server
+        await shutdown_mcp_server()
+        
+        # Wait for MCP thread to finish with timeout
+        if mcp_thread and mcp_thread.is_alive():
+            logger.info("Waiting for MCP server thread to finish...")
+            mcp_thread.join(timeout=30)
+            
+            if mcp_thread.is_alive():
+                logger.warning("MCP server thread did not finish within timeout")
+            else:
+                logger.info("MCP server thread finished successfully")
+        
+        # Then perform other shutdown operations
         await graceful_shutdown()
     except Exception as e:
         logger.error(f"Error during graceful shutdown: {e}", exc_info=True)
-    
-    # Check MCP thread status
-    if mcp_thread and mcp_thread.is_alive():
-        logger.info("MCP server thread is still running (daemon thread will terminate with main process).")
     
     logger.info("FastAPI application shutdown completed.")
 
