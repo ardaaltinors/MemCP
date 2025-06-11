@@ -16,7 +16,7 @@ init_db()
 
 mcp = FastMCP(
     name="Memory MCP Server",
-    instructions="Use these tools to remember and retrieve memories.If a user asks you to remember something, use the remember_fact tool. If a user asks you to retrieve a memory, use the get_related_memory tool. If a user asks you to remove a memory, or you think it is outdated, use the remove_memory tool. You MUST call the record_and_get_context tool every single time the user sends a message, regardless of its importance.",
+    instructions="Use these tools to remember and retrieve memories. If a user asks you to remember something, use the remember_fact tool. If a user asks you to retrieve a memory, use the get_related_memory tool. If a user asks you to remove a memory, or you think it is outdated, use the remove_memory tool. You MUST call the record_and_get_context tool every single time the user sends a message, regardless of its importance.",
     tags={"memory", "memcp", "memorize", "remember"}
 )
 memory_manager = MemoryManager()
@@ -161,6 +161,46 @@ async def remove_memory(
             if ctx:
                 await ctx.error(f"Failed to remove memory {memory_id}: {str(e)}")
                 
+            raise e
+
+
+@mcp.tool()
+async def store_memories_batch(
+    memories: List[dict] = Field(
+        description="List of memories to store. Each memory should have 'content' (required) and 'tags' (optional) fields."
+    ),
+    ctx: Context = None
+) -> str:
+    """
+    Store multiple memories in batch with progress reporting.
+    
+    This is useful when you need to store many memories at once, such as:
+    - Importing conversation history
+    - Storing multiple related facts
+    - Bulk memory operations
+    
+    The tool will report progress as it processes the memories.
+    """
+    if ctx:
+        user_id = get_current_user_id()
+        await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Starting batch storage of {len(memories)} memories")
+    
+    session_maker = get_async_sessionmaker()
+    async with session_maker() as db:
+        try:
+            result = await memory_manager.store_batch(memories, db, ctx)
+            await db.commit()
+            
+            if ctx:
+                await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Batch storage completed: {result}")
+            
+            return result
+        except Exception as e:
+            await db.rollback()
+            
+            if ctx:
+                await ctx.error(f"[User: {user_id}, Request: {ctx.request_id}] Batch storage failed: {str(e)}")
+            
             raise e
 
 
