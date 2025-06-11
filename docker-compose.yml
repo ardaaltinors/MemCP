@@ -82,14 +82,10 @@ services:
     
     # Dependencies
     depends_on:
-      postgres:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - qdrant
+      - rabbitmq
+      - redis
     
     # Networks
     networks:
@@ -150,13 +146,6 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
     
-    # Health check
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:6333/health || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
     
     # Logging
     logging:
@@ -189,12 +178,6 @@ services:
     networks:
       - memory-mcp-network
     
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
     
     logging:
       driver: "json-file"
@@ -270,14 +253,10 @@ services:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
     
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
+      - postgres
+      - rabbitmq
+      - redis
+      - qdrant
     
     networks:
       - memory-mcp-network
@@ -323,8 +302,7 @@ services:
     
     # Dependencies - wait for backend to be healthy
     depends_on:
-      memory-mcp:
-        condition: service_healthy
+      - memory-mcp
     
     # Networks
     networks:
