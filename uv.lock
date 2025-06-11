@@ -207,6 +207,19 @@ redis = [
 ]
 
 [[package]]
+name = "celery-singleton"
+version = "0.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "celery" },
+    { name = "redis" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/23/f0/ef4c769215086812a9e968bf9309fbd90bfe663d5175742e9386e1e1e052/celery-singleton-0.3.1.tar.gz", hash = "sha256:260ce4978e631f8682ea0ccb03d7f3b87d42bc20e04e9bd46ddb78a2f8035d1e", size = 4659, upload-time = "2021-01-14T16:23:40.801Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a0/88/40b38306a829b637abf7ef2bfaaa8a1dd027dc08c2121d11f32d41b0c9f2/celery_singleton-0.3.1-py3-none-any.whl", hash = "sha256:76b30a1bbe31d42030924b3eecfcaae2ab3ab99bf43e607cd46437f012434420", size = 6505, upload-time = "2021-01-14T16:23:41.784Z" },
+]
+
+[[package]]
 name = "certifi"
 version = "2025.4.26"
 source = { registry = "https://pypi.org/simple" }
@@ -1107,6 +1120,7 @@ dependencies = [
     { name = "asyncpg" },
     { name = "bcrypt" },
     { name = "celery", extra = ["redis"] },
+    { name = "celery-singleton" },
     { name = "email-validator" },
     { name = "fastapi" },
     { name = "fastmcp" },
@@ -1133,6 +1147,7 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "bcrypt", specifier = ">=4.3.0" },
     { name = "celery", extras = ["redis"], specifier = ">=5.5.3" },
+    { name = "celery-singleton", specifier = ">=0.3.1" },
     { name = "email-validator", specifier = ">=2.2.0" },
     { name = "fastapi", specifier = ">=0.115.12" },
     { name = "fastmcp", specifier = ">=2.3.4" },

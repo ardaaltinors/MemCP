@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any
 from sqlalchemy import select, update
 from celery.exceptions import SoftTimeLimitExceeded
+from celery_singleton import Singleton
 from src.celery_app import celery_app
 from src.db.database import SyncSessionLocal
 from src.db.models import ProcessedUserProfile, UserMessage
@@ -18,8 +19,13 @@ logger = logging.getLogger(__name__)
 @celery_app.task(
     name="tasks.update_profile_background", 
     bind=True,
+    base=Singleton,
     max_retries=1,  # Only retry once
     default_retry_delay=60,  # Wait 60 seconds before retry
+    soft_time_limit=300,  # 5 minutes soft limit
+    time_limit=360,  # 6 minutes hard limit
+    unique_on=['user_id_str'],  # Prevent duplicate tasks per user
+    lock_expiry=600  # Lock expires after 10 minutes
 )
 def update_profile_background(
     self,
@@ -31,8 +37,12 @@ def update_profile_background(
     """
     Celery task to synthesize and store the updated user profile asynchronously.
     
+    This task uses celery-singleton to ensure only one instance runs per user at a time.
+    If a duplicate task is submitted while one is already running, it will be discarded.
+    The lock is automatically released when the task completes or fails.
+    
     Args:
-        user_id_str: UUID string of the user
+        user_id_str: UUID string of the user (used as unique key for singleton)
         unprocessed_messages: List of unprocessed messages to process
         existing_metadata_json_str: Current metadata as JSON string
         existing_summary_text: Current profile summary
@@ -43,6 +53,10 @@ def update_profile_background(
     try:
         user_id = uuid.UUID(user_id_str)
         logger.info(f"Starting profile update task for user {user_id} with {len(unprocessed_messages)} messages")
+        
+        # Log if this is a duplicate task that got through before lock was acquired
+        if hasattr(self, 'is_duplicate') and self.is_duplicate:
+            logger.warning(f"Duplicate task detected for user {user_id}, will be prevented by Singleton lock")
         
         # Early exit if no messages to process
         if not unprocessed_messages:

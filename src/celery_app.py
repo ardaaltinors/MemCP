@@ -38,5 +38,8 @@ celery_app.conf.update(
         'visibility_timeout': 400,  # Must be longer than task_time_limit
         'fanout_prefix': True,
         'fanout_patterns': True
-    }
+    },
+    # Singleton configuration
+    singleton_key_prefix='celery_singleton',  # Prefix for lock keys
+    task_ignore_result=False,  # Required for singleton to work
 ) 
