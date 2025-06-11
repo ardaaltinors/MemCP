@@ -7,6 +7,14 @@ import { RegisterForm } from "@libs/ui/components/RegisterForm";
     title="Register - MemCP"
     description="Create your MemCP account to start using portable agent memory across all your AI conversations."
 >
+    <script>
+        import { authUtils } from "@libs/utils/auth";
+        
+        // Check if user is authenticated and redirect to dashboard
+        if (authUtils.isAuthenticated()) {
+            window.location.href = "/dashboard";
+        }
+    </script>
     <main class="min-h-screen flex items-center justify-center px-4 py-12 pt-32 md:pt-40">
         <div class="w-full max-w-md">
             {/* Header */}
