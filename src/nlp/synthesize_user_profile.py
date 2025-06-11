@@ -5,7 +5,12 @@ from pydantic import BaseModel
 from src.nlp.prompts import user_profile_synthesizer_prompt
 
 
-_llm = ChatGoogleGenerativeAI(temperature=0, model="gemini-2.5-flash-preview-05-20")
+_llm = ChatGoogleGenerativeAI(
+    temperature=0, 
+    model="gemini-2.5-flash-preview-05-20",
+    timeout=120,
+    max_retries=2
+)
 _prompt_template = PromptTemplate.from_template(user_profile_synthesizer_prompt)
 _output_parser = StrOutputParser()
 

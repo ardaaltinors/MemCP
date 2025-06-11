@@ -1,5 +1,5 @@
 import uuid
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.context import get_current_user_id
@@ -7,6 +7,9 @@ from src.db.models import Memory
 from src.exceptions import UserContextError, DatabaseOperationError
 from src.utils.vector_store import VectorStore
 from src.utils.profile_processor import ProfileProcessor
+
+if TYPE_CHECKING:
+    from fastmcp import Context
 
 class MemoryManager:
     """Main interface for memory operations."""
@@ -71,7 +74,7 @@ class MemoryManager:
                 original_exception=e
             )
         
-        return f"Memory stored with ID: {memory_id} for user: {user_id}"
+        return f"Memory stored with ID: {memory_id}"
 
     async def search_related(self, query_text: str) -> list[dict]:
         """Performs a semantic search for memories related to the query text."""
@@ -171,11 +174,11 @@ class MemoryManager:
         
         # Delete from Qdrant
         try:
-            # Note: Current VectorStore doesn't have a delete method
-            # This would need to be implemented for full consistency
-            pass
+            await self.vector_store.delete_memory(memory_id, user_id)
         except Exception as e:
             # Log error but don't fail since PostgreSQL deletion succeeded
+            # This maintains partial consistency - the memory is removed from PostgreSQL
+            # even if Qdrant deletion fails
             pass
         
         return f"Memory {memory_id} deleted successfully"
@@ -190,3 +193,68 @@ class MemoryManager:
             )
 
         return await ProfileProcessor.record_message_and_get_profile(user_id, prompt)
+    
+    async def store_batch(
+        self, 
+        memories: list[dict],
+        db: AsyncSession,
+        ctx: Optional['Context'] = None
+    ) -> str:
+        """
+        Store multiple memories with progress reporting.
+        
+        Args:
+            memories: List of dicts with 'content' and optional 'tags' keys
+            db: Database session
+            ctx: Optional FastMCP context for progress reporting
+        """
+        user_id = get_current_user_id()
+        if user_id is None:
+            raise UserContextError(
+                message="User context is required for batch memory storage",
+                operation="store_batch"
+            )
+        
+        total = len(memories)
+        successful = 0
+        failed = 0
+        
+        if ctx:
+            await ctx.info(f"Starting batch storage of {total} memories")
+        
+        for i, memory_data in enumerate(memories):
+            if ctx:
+                await ctx.report_progress(progress=i, total=total)
+            
+            try:
+                content = memory_data.get('content', '')
+                tags = memory_data.get('tags', [])
+                
+                # Generate a UUID for this memory
+                memory_id = str(uuid.uuid4())
+                
+                # Store in vector database
+                await self.vector_store.store_memory(memory_id, content, user_id, tags)
+                
+                # Store in relational database
+                db_memory = Memory(
+                    id=uuid.UUID(memory_id),
+                    content=content,
+                    tags=tags or [],
+                    user_id=user_id
+                )
+                db.add(db_memory)
+                successful += 1
+                
+            except Exception as e:
+                failed += 1
+                if ctx:
+                    await ctx.warning(f"Failed to store memory {i+1}: {str(e)}")
+        
+        await db.flush()
+        
+        if ctx:
+            await ctx.report_progress(progress=total, total=total)
+            await ctx.info(f"Batch storage complete: {successful} successful, {failed} failed")
+        
+        return f"Stored {successful} memories, {failed} failed"

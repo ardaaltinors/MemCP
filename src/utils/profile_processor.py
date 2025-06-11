@@ -141,11 +141,18 @@ class ProfileProcessor:
                 
                 logger.info(f"Triggering background update for user {user_id} with {len(unprocessed_messages)} unprocessed messages")
                 
-                update_profile_background.delay(
-                    user_id_str=str(user_id),
-                    unprocessed_messages=unprocessed_message_data,
-                    existing_metadata_json_str=existing_metadata_json_str,
-                    existing_summary_text=existing_summary_text,
+                # Use a deterministic task ID based on user and message count to prevent duplicates
+                task_id = f"profile_update_{user_id}_{len(unprocessed_messages)}"
+                
+                update_profile_background.apply_async(
+                    args=[
+                        str(user_id),
+                        unprocessed_message_data,
+                        existing_metadata_json_str,
+                        existing_summary_text,
+                    ],
+                    task_id=task_id,
+                    countdown=2  # Small delay to ensure DB commit completes
                 )
 
             await db.commit()

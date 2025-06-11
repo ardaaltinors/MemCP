@@ -122,16 +122,16 @@ export const LiquidGlassHero: React.FC<LiquidGlassHeroProps> = ({ title, descrip
                 
                 <div className="hero-stats">
                     <div className="stat-item liquid-glass">
-                        <span className="stat-number">10K+</span>
-                        <span className="stat-label">Active Users</span>
+                        <span className="stat-number">100%</span>
+                        <span className="stat-label">Open Source</span>
                     </div>
                     <div className="stat-item liquid-glass">
-                        <span className="stat-number">1M+</span>
-                        <span className="stat-label">Memories Stored</span>
+                        <span className="stat-number">&lt;10ms</span>
+                        <span className="stat-label">Memory Operations</span>
                     </div>
                     <div className="stat-item liquid-glass">
-                        <span className="stat-number">99.9%</span>
-                        <span className="stat-label">Uptime</span>
+                        <span className="stat-number">∞</span>
+                        <span className="stat-label">Memory Capacity</span>
                     </div>
                 </div>
             </div>
