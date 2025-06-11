@@ -3,6 +3,7 @@ from src.db.models.user import User
 from src.db.models.memory import Memory
 from src.db.models.user_message import UserMessage
 from src.db.models.processed_user_profile import ProcessedUserProfile
+from src.db.models.server_property import ServerProperty
 
 # You can import other models here as you create them
 # For example:
@@ -13,5 +14,6 @@ __all__ = [
     "User", 
     "Memory", 
     "UserMessage", 
-    "ProcessedUserProfile"
+    "ProcessedUserProfile",
+    "ServerProperty"
 ] # Optional: defines what `from .models import *` imports 

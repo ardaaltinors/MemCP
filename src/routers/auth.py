@@ -5,7 +5,7 @@ from datetime import timedelta, datetime, timezone
 
 from src.core import security
 from src.core.config import get_mcp_connection_url
-from src.crud import crud_user
+from src.crud import crud_user, crud_server_property
 from src.db.database import get_async_db
 from src.db.models.user import User as DBUser
 from src.schemas import user as user_schema, token as token_schema
@@ -81,6 +81,13 @@ async def login_for_access_token(db: AsyncSession = Depends(get_async_db), form_
 
 @router.post("/users/", response_model=user_schema.User, status_code=status.HTTP_201_CREATED, tags=["Users"])
 async def create_user(user_in: user_schema.UserCreate, db: AsyncSession = Depends(get_async_db)):
+    # Check if registration is active
+    if not await crud_server_property.is_registration_active(db):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User registration is currently disabled"
+        )
+    
     db_user_by_email = await crud_user.get_user_by_email(db, email=user_in.email)
     if db_user_by_email:
         raise DuplicateRecordError(

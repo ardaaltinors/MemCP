@@ -1,3 +1,12 @@
+---
+<div align="center">
+  <h1>🚧 <span style="color:#ffd700">MemCP</span> — *Work in Progress*</h1>
+  <p><i>Next-gen portable memory for AI assistants. Join the journey!</i></p>
+</div>
+---
+
+# 🚧🚧🚧 MemCP — Work In Progress 🚧🚧🚧
+
 # MemCP - Portable Memory for AI
 
 A powerful memory management system for AI assistants that implements the Model Context Protocol (MCP), enabling persistent context and knowledge across conversations and different AI providers.
