@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any
 from sqlalchemy import select, update
+from celery.exceptions import SoftTimeLimitExceeded
 from src.celery_app import celery_app
 from src.db.database import SyncSessionLocal
 from src.db.models import ProcessedUserProfile, UserMessage
@@ -14,8 +15,14 @@ from src.exceptions.handlers import ExceptionHandler
 # Configure logger for celery tasks
 logger = logging.getLogger(__name__)
 
-@celery_app.task(name="tasks.update_profile_background")
+@celery_app.task(
+    name="tasks.update_profile_background", 
+    bind=True,
+    max_retries=1,  # Only retry once
+    default_retry_delay=60,  # Wait 60 seconds before retry
+)
 def update_profile_background(
+    self,
     user_id_str: str,
     unprocessed_messages: List[Dict[str, Any]],
     existing_metadata_json_str: str,
@@ -37,13 +44,42 @@ def update_profile_background(
         user_id = uuid.UUID(user_id_str)
         logger.info(f"Starting profile update task for user {user_id} with {len(unprocessed_messages)} messages")
         
+        # Early exit if no messages to process
+        if not unprocessed_messages:
+            logger.info(f"No unprocessed messages for user {user_id}, skipping task")
+            return
+        
+        # Update task state to show progress
+        self.update_state(
+            state='PROGRESS',
+            meta={'current': 0, 'total': len(unprocessed_messages), 'status': 'Preparing messages'}
+        )
+        
         db = SyncSessionLocal()
         try:
+            # First, check if these messages are already processed (deduplication)
+            message_ids = [msg.get("id") for msg in unprocessed_messages if msg.get("id")]
+            if message_ids:
+                check_stmt = select(UserMessage.id).where(
+                    UserMessage.id.in_(message_ids),
+                    UserMessage.is_processed == True
+                )
+                already_processed = db.execute(check_stmt).scalars().all()
+                if already_processed:
+                    logger.warning(f"Found {len(already_processed)} already processed messages for user {user_id}, potential duplicate task")
+                    # Filter out already processed messages
+                    unprocessed_messages = [
+                        msg for msg in unprocessed_messages 
+                        if msg.get("id") not in already_processed
+                    ]
+                    if not unprocessed_messages:
+                        logger.info(f"All messages already processed for user {user_id}, exiting task")
+                        return
             # Build comprehensive user messages string from all unprocessed messages
             user_messages_parts = []
             message_ids_to_mark = []
             
-            for msg_data in unprocessed_messages:
+            for idx, msg_data in enumerate(unprocessed_messages):
                 timestamp = msg_data.get("created_at", datetime.now(timezone.utc).isoformat())
                 content = msg_data.get("message_content", "")
                 message_id = msg_data.get("id")
@@ -51,18 +87,39 @@ def update_profile_background(
                 user_messages_parts.append(f"Timestamp: {timestamp}\nUser: {content}")
                 if message_id:
                     message_ids_to_mark.append(message_id)
+                
+                # Update progress every 5 messages
+                if idx % 5 == 0:
+                    self.update_state(
+                        state='PROGRESS',
+                        meta={'current': idx, 'total': len(unprocessed_messages), 'status': 'Processing messages'}
+                    )
             
             user_messages_str = "\n\n".join(user_messages_parts)
             
             logger.debug(f"Processing {len(unprocessed_messages)} messages for user {user_id}")
             logger.debug(f"Combined messages length: {len(user_messages_str)} characters")
+            
+            # Update state before LLM call
+            self.update_state(
+                state='PROGRESS',
+                meta={'current': len(unprocessed_messages), 'total': len(unprocessed_messages), 'status': 'Synthesizing profile with LLM'}
+            )
 
             logger.debug(f"Calling LLM for profile synthesis for user {user_id}")
-            llm_response = get_llm_profile_synthesis(
-                user_messages_str=user_messages_str,
-                existing_metadata_json_str=existing_metadata_json_str,
-                existing_summary_text=existing_summary_text,
-            )
+            try:
+                llm_response = get_llm_profile_synthesis(
+                    user_messages_str=user_messages_str,
+                    existing_metadata_json_str=existing_metadata_json_str,
+                    existing_summary_text=existing_summary_text,
+                )
+            except SoftTimeLimitExceeded:
+                logger.error(f"Task soft time limit exceeded for user {user_id}")
+                raise UserContextError(
+                    message="Profile synthesis timed out",
+                    operation="llm_synthesis",
+                    user_id=str(user_id)
+                )
 
             new_summary = None
             new_metadata_json_str = None
@@ -115,6 +172,12 @@ def update_profile_background(
                     db.commit()
                     logger.info(f"Successfully updated profile for user {user_id}")
                     
+                    # Update state to completed
+                    self.update_state(
+                        state='SUCCESS',
+                        meta={'current': len(unprocessed_messages), 'total': len(unprocessed_messages), 'status': 'Profile update completed'}
+                    )
+                    
                     # Mark specific processed messages as processed after successful profile update
                     if message_ids_to_mark:
                         logger.debug(f"Marking {len(message_ids_to_mark)} specific messages as processed for user {user_id}")
@@ -149,7 +212,7 @@ def update_profile_background(
             db.close()
             logger.debug(f"Database session closed for user {user_id}")
             
-    except uuid.ValueError as e:
+    except ValueError as e:
         logger.error(f"Invalid user ID format: {user_id_str}", exc_info=True)
         raise UserContextError(
             message="Invalid user ID format",
