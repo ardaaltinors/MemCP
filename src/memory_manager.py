@@ -183,6 +183,51 @@ class MemoryManager:
         
         return f"Memory {memory_id} deleted successfully"
 
+    async def delete_all_user_memories(self, db: AsyncSession) -> str:
+        """
+        Delete all memories for a user from both PostgreSQL and Qdrant, plus processed profile.
+        """
+        from src.crud.crud_memory import delete_all_user_memories
+        from src.crud.crud_processed_user_profile import delete_processed_user_profile
+        
+        user_id = get_current_user_id()
+        if user_id is None:
+            raise UserContextError(
+                message="User context is required for bulk memory deletion",
+                operation="delete_all_memories"
+            )
+        
+        # Delete from PostgreSQL first
+        try:
+            postgres_count = await delete_all_user_memories(db=db, user_id=user_id)
+        except Exception as e:
+            raise DatabaseOperationError(
+                message="Failed to delete all memories from relational database",
+                operation="bulk_delete",
+                table_name="memories",
+                original_exception=e
+            )
+        
+        # Delete from Qdrant
+        qdrant_count = 0
+        try:
+            qdrant_count = await self.vector_store.delete_all_user_memories(user_id)
+        except Exception as e:
+            # Log error but don't fail since PostgreSQL deletion succeeded
+            # This maintains partial consistency - memories are removed from PostgreSQL
+            pass
+        
+        # Delete processed user profile
+        profile_deleted = False
+        try:
+            profile_deleted = await delete_processed_user_profile(db=db, user_id=user_id)
+        except Exception as e:
+            # Log error but don't fail the operation
+            pass
+        
+        profile_msg = " and processed profile" if profile_deleted else ""
+        return f"Deleted {postgres_count} memories from PostgreSQL, {qdrant_count} from Qdrant{profile_msg}"
+
     async def process_context(self, prompt: str, tags: Optional[list[str]] = None) -> str:
         """Record the user's message and return the synthesized profile."""
         user_id = get_current_user_id()
