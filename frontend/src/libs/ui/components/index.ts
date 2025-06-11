@@ -10,3 +10,4 @@ export * from "./DashboardContainer";
 export * from "./CredentialsContainer";
 export * from "./DashboardHeader";
 export * from "./MouseFollowingNodes";
+export * from "./SettingsContainer";
