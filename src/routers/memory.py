@@ -136,7 +136,7 @@ async def delete_all_memories(
     set_current_user_id(current_user.id)
     
     # Use memory manager to delete all user data
-    result_message = await memory_manager.delete_all_user_memories(db=db)
+    result_message = await memory_manager.delete_all_user_memories(db=db, user_id=current_user.id)
     
     return {"message": result_message}
 
@@ -186,6 +186,7 @@ async def create_memory(
     result_message = await memory_manager.store(
         content=memory_in.content,
         db=db,
+        user_id=current_user.id,
         tags=memory_in.tags
     )
     
@@ -230,6 +231,7 @@ async def create_bulk_memories(
             result_message = await memory_manager.store(
                 content=memory_create.content,
                 db=db,
+                user_id=current_user.id,
                 tags=memory_create.tags
             )
             
@@ -294,6 +296,7 @@ async def update_memory(
         memory_id=str(memory_id),
         content=memory_update.content,
         db=db,
+        user_id=current_user.id,
         tags=memory_update.tags
     )
     
@@ -326,7 +329,8 @@ async def delete_memory(
     # Use memory manager to delete from both databases
     result_message = await memory_manager.delete_memory(
         memory_id=str(memory_id),
-        db=db
+        db=db,
+        user_id=current_user.id
     )
     
     return {"message": result_message}
