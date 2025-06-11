@@ -125,7 +125,7 @@ app.include_router(auth.router, prefix="/auth", tags=["authentication"])
 from src.routers import memory
 app.include_router(memory.router, prefix="/memories", tags=["Memories"])
 
-@app.get("/")
+@app.get("/health")
 async def health_check():
     """
     Main health check endpoint.
