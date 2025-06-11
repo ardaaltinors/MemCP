@@ -29,4 +29,14 @@ celery_app = Celery(
 
 celery_app.conf.update(
     task_track_started=True,
+    task_acks_late=True,  # Acknowledge task after completion, not before
+    worker_prefetch_multiplier=1,  # Process one task at a time
+    task_soft_time_limit=300,  # 5 minutes soft limit
+    task_time_limit=360,  # 6 minutes hard limit
+    task_reject_on_worker_lost=True,  # Reject task if worker dies
+    broker_transport_options={
+        'visibility_timeout': 400,  # Must be longer than task_time_limit
+        'fanout_prefix': True,
+        'fanout_patterns': True
+    }
 ) 

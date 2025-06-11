@@ -1,7 +1,7 @@
 import os
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, TYPE_CHECKING
 
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
@@ -15,6 +15,9 @@ from qdrant_client.models import (
 
 from src.exceptions import QdrantServiceError, MemorySearchError
 from src.utils.embedding import EmbeddingService
+
+if TYPE_CHECKING:
+    from fastmcp import Context
 
 
 class VectorStore:
@@ -237,6 +240,81 @@ class VectorStore:
                 collection_name=self.collection_name,
                 original_exception=e
             )
+
+    async def store_memories_batch(
+        self,
+        memories: List[Dict[str, any]],
+        user_id: uuid.UUID,
+        ctx: Optional['Context'] = None
+    ) -> int:
+        """
+        Store multiple memories in batch with progress reporting.
+        
+        Args:
+            memories: List of dicts with 'id', 'content', and optional 'tags'
+            user_id: User UUID
+            ctx: Optional FastMCP context for progress reporting
+            
+        Returns:
+            Number of successfully stored memories
+        """
+        total = len(memories)
+        if ctx:
+            await ctx.info(f"Starting batch vector storage for {total} memories")
+        
+        # Process embeddings in batches
+        batch_size = 10
+        points = []
+        
+        for i in range(0, total, batch_size):
+            if ctx:
+                await ctx.report_progress(progress=i, total=total)
+            
+            batch = memories[i:i + batch_size]
+            
+            # Generate embeddings for batch
+            try:
+                contents = [m['content'] for m in batch]
+                embeddings = await self.embedding_service.generate_embeddings(contents)
+                
+                # Create points for batch
+                for j, (memory, embedding) in enumerate(zip(batch, embeddings)):
+                    point = PointStruct(
+                        id=memory['id'],
+                        vector=embedding,
+                        payload={
+                            "content": memory['content'],
+                            "user_id": str(user_id),
+                            "tags": memory.get('tags', []),
+                            "timestamp": datetime.now(timezone.utc).isoformat()
+                        }
+                    )
+                    points.append(point)
+                    
+            except Exception as e:
+                if ctx:
+                    await ctx.warning(f"Failed to process batch {i//batch_size + 1}: {str(e)}")
+        
+        # Upload all points
+        if points:
+            try:
+                await self.client.upsert(
+                    collection_name=self.collection_name,
+                    points=points,
+                    wait=True
+                )
+                if ctx:
+                    await ctx.report_progress(progress=total, total=total)
+                    await ctx.info(f"Successfully stored {len(points)} vectors")
+            except Exception as e:
+                raise QdrantServiceError(
+                    message="Failed to upload vectors to Qdrant",
+                    operation="batch_upsert",
+                    collection_name=self.collection_name,
+                    original_exception=e
+                )
+        
+        return len(points)
 
     async def close(self):
         """Close the async client connection."""

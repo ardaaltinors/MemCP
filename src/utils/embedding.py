@@ -39,4 +39,23 @@ class EmbeddingService:
                 text_content=content,
                 embedding_model=self.embedding_model,
                 original_exception=e
+            )
+    
+    async def generate_embeddings(self, contents: list[str]) -> list[list[float]]:
+        """Generate embeddings for multiple text contents in batch."""
+        if not contents:
+            return []
+        
+        try:
+            resp = await self.openai_client.embeddings.create(
+                input=contents,
+                model=self.embedding_model
+            )
+            return [item.embedding for item in resp.data]
+        except Exception as e:
+            raise EmbeddingError(
+                message=f"Failed to generate embeddings for {len(contents)} contents",
+                text_content=f"Batch of {len(contents)} texts",
+                embedding_model=self.embedding_model,
+                original_exception=e
             ) 
