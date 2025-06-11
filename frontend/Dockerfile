@@ -1,6 +1,5 @@
 # =============================================================================
-# Multi-stage Dockerfile for Astro Frontend
-# Uses Node.js for building and nginx for serving
+# Improved Multi-stage Dockerfile with Better Health Checks
 # =============================================================================
 
 # Build stage
@@ -31,8 +30,8 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine AS runtime
 
-# Install bash for healthcheck
-RUN apk add --no-cache bash
+# Install wget for health checks (Alpine-compatible)
+RUN apk add --no-cache wget
 
 # Copy custom nginx configuration
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
@@ -40,15 +39,26 @@ COPY nginx/nginx.conf /etc/nginx/nginx.conf
 # Copy built assets from build stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Create nginx cache directory
-RUN mkdir -p /var/cache/nginx/client_temp
+# Create nginx directories
+RUN mkdir -p /var/cache/nginx/client_temp && \
+    mkdir -p /var/log/nginx && \
+    touch /var/log/nginx/access.log && \
+    touch /var/log/nginx/error.log
+
+# Create custom 50x.html error page
+RUN echo '<!DOCTYPE html><html><head><title>Service Temporarily Unavailable</title></head><body><h1>Service Temporarily Unavailable</h1><p>Please try again later.</p></body></html>' > /usr/share/nginx/html/50x.html
+
+# Set proper permissions
+RUN chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    chmod -R 755 /usr/share/nginx/html
 
 # Expose port
 EXPOSE 80
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost/ || exit 1
+# Health check using wget (Alpine-compatible)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost/health || exit 1
 
 # Start nginx
-CMD ["nginx", "-g", "daemon off;"] 
+CMD ["nginx", "-g", "daemon off;"]
