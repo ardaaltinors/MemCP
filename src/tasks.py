@@ -70,37 +70,54 @@ def update_profile_background(
         )
         
         db = SyncSessionLocal()
+        messages_to_process = []
+        
         try:
-            # First, check if these messages are already processed (deduplication)
+            # Atomic check-and-update to prevent race conditions
             message_ids = [msg.get("id") for msg in unprocessed_messages if msg.get("id")]
             if message_ids:
-                check_stmt = select(UserMessage.id).where(
-                    UserMessage.id.in_(message_ids),
-                    UserMessage.is_processed == True
-                )
-                already_processed = db.execute(check_stmt).scalars().all()
-                if already_processed:
-                    logger.warning(f"Found {len(already_processed)} already processed messages for user {user_id}, potential duplicate task")
-                    # Filter out already processed messages
-                    unprocessed_messages = [
-                        msg for msg in unprocessed_messages 
-                        if msg.get("id") not in already_processed
-                    ]
-                    if not unprocessed_messages:
-                        logger.info(f"All messages already processed for user {user_id}, exiting task")
-                        return
+                # Convert string IDs to integers if needed
+                try:
+                    message_ids_int = [int(mid) for mid in message_ids]
+                except (ValueError, TypeError):
+                    # If conversion fails, use as-is (might be UUIDs)
+                    message_ids_int = message_ids
+                
+                # Use SELECT FOR UPDATE to lock rows during check
+                check_stmt = select(UserMessage).where(
+                    UserMessage.id.in_(message_ids_int)
+                ).with_for_update(skip_locked=True)  # Skip rows locked by other transactions
+                
+                locked_messages = []
+                for msg in db.execute(check_stmt).scalars():
+                    if not msg.is_processed:
+                        messages_to_process.append(msg.id)  # Store actual ID type from DB
+                        locked_messages.append(msg)
+                
+                if not messages_to_process:
+                    logger.info(f"All messages already processed or locked by other workers for user {user_id}, exiting task")
+                    db.rollback()  # Release any locks
+                    return
+                
+                # Filter unprocessed_messages to only include those we're actually processing
+                # Convert to string for comparison if needed
+                messages_to_process_str = [str(mid) for mid in messages_to_process]
+                unprocessed_messages = [
+                    msg for msg in unprocessed_messages 
+                    if str(msg.get("id")) in messages_to_process_str
+                ]
+                
+                logger.info(f"Acquired locks on {len(messages_to_process)} messages for processing for user {user_id}")
             # Build comprehensive user messages string from all unprocessed messages
             user_messages_parts = []
-            message_ids_to_mark = []
+            # Use the actual DB IDs we locked, not the string IDs from input
+            message_ids_to_mark = messages_to_process if messages_to_process else []
             
             for idx, msg_data in enumerate(unprocessed_messages):
                 timestamp = msg_data.get("created_at", datetime.now(timezone.utc).isoformat())
                 content = msg_data.get("message_content", "")
-                message_id = msg_data.get("id")
                 
                 user_messages_parts.append(f"Timestamp: {timestamp}\nUser: {content}")
-                if message_id:
-                    message_ids_to_mark.append(message_id)
                 
                 # Update progress every 5 messages
                 if idx % 5 == 0:
@@ -183,18 +200,14 @@ def update_profile_background(
                     db.add(profile)
                 
                 try:
-                    db.commit()
-                    logger.info(f"Successfully updated profile for user {user_id}")
+                    # Don't commit yet - we need to mark messages as processed first
+                    db.flush()  # Flush profile changes but keep transaction open
+                    logger.info(f"Profile updated for user {user_id}, marking messages as processed...")
                     
-                    # Update state to completed
-                    self.update_state(
-                        state='SUCCESS',
-                        meta={'current': len(unprocessed_messages), 'total': len(unprocessed_messages), 'status': 'Profile update completed'}
-                    )
-                    
-                    # Mark specific processed messages as processed after successful profile update
+                    # Mark messages as processed in the same transaction
                     if message_ids_to_mark:
-                        logger.debug(f"Marking {len(message_ids_to_mark)} specific messages as processed for user {user_id}")
+                        logger.debug(f"Marking {len(message_ids_to_mark)} messages as processed for user {user_id}")
+                        logger.debug(f"Message IDs to mark: {message_ids_to_mark} (types: {[type(mid).__name__ for mid in message_ids_to_mark]})")
                         update_stmt = (
                             update(UserMessage)
                             .where(UserMessage.id.in_(message_ids_to_mark))
@@ -202,8 +215,20 @@ def update_profile_background(
                         )
                         result = db.execute(update_stmt)
                         processed_count = result.rowcount
-                        db.commit()
                         logger.info(f"Marked {processed_count} messages as processed for user {user_id}")
+                        
+                        if processed_count != len(message_ids_to_mark):
+                            logger.warning(f"Expected to mark {len(message_ids_to_mark)} messages but only marked {processed_count}")
+                    
+                    # Now commit everything together
+                    db.commit()
+                    logger.info(f"Successfully committed profile update and message processing for user {user_id}")
+                    
+                    # Update state to completed after successful commit
+                    self.update_state(
+                        state='SUCCESS',
+                        meta={'current': len(unprocessed_messages), 'total': len(unprocessed_messages), 'status': 'Profile update completed'}
+                    )
                     
                 except Exception as e:
                     db.rollback()
