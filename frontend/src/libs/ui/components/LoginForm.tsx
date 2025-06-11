@@ -23,7 +23,15 @@ export const LoginForm: FC<LoginFormProps> = ({ onSubmit, onSuccess, onError }) 
         const newErrors: { username?: string; password?: string; general?: string } = {};
 
         if (!formData.username.trim()) {
-            newErrors.username = "Username is required";
+            newErrors.username = "Username or email is required";
+        } else {
+            // Check if it's an email or username
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+            
+            if (!emailRegex.test(formData.username) && !usernameRegex.test(formData.username)) {
+                newErrors.username = "Please enter a valid username or email";
+            }
         }
 
         if (!formData.password) {
@@ -112,7 +120,7 @@ export const LoginForm: FC<LoginFormProps> = ({ onSubmit, onSuccess, onError }) 
                 {/* Username Field */}
                 <div>
                     <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
-                        Username
+                        Username or Email
                     </label>
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -134,7 +142,7 @@ export const LoginForm: FC<LoginFormProps> = ({ onSubmit, onSuccess, onError }) 
                                 transition-all duration-200
                                 ${errors.username ? 'border-red-500' : 'border-gray-600 hover:border-gray-500'}
                             `}
-                            placeholder="Enter your username"
+                            placeholder="Enter your username or email"
                         />
                     </div>
                     {errors.username && (

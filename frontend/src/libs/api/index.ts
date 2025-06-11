@@ -188,4 +188,45 @@ export const deleteMemory = async (token: string, memoryId: string): Promise<Del
   }
 
   return response.json();
+};
+
+// Change Password API
+export const changePassword = async (token: string, oldPassword: string, newPassword: string): Promise<{ message: string }> => {
+  const response = await fetch(`${BASE_URL}/users/me/password`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      old_password: oldPassword,
+      new_password: newPassword,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    const errorMessage = errorData.message || errorData.detail || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
+};
+
+// Delete All Memories API
+export const deleteAllMemories = async (token: string): Promise<{ message: string }> => {
+  const response = await fetch(`${MEMORY_BASE_URL}/all`, {
+    method: "DELETE",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    const errorMessage = errorData.message || errorData.detail || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
 }; 

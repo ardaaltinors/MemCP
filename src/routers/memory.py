@@ -121,6 +121,26 @@ async def search_memories(
     }
 
 
+@router.delete("/all", tags=["Memories"])
+async def delete_all_memories(
+    current_user: DBUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Delete all memories for the authenticated user.
+    
+    This permanently removes all memories from both PostgreSQL and Qdrant,
+    as well as the user's processed profile data. This action cannot be undone.
+    """
+    # Set user context for memory manager
+    set_current_user_id(current_user.id)
+    
+    # Use memory manager to delete all user data
+    result_message = await memory_manager.delete_all_user_memories(db=db)
+    
+    return {"message": result_message}
+
+
 @router.get("/{memory_id}", response_model=memory_schema.Memory, tags=["Memories"])
 async def get_memory(
     memory_id: uuid.UUID,

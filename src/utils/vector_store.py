@@ -241,6 +241,48 @@ class VectorStore:
                 original_exception=e
             )
 
+    async def delete_all_user_memories(self, user_id: uuid.UUID) -> int:
+        """Delete all memories for a user from the vector database. Returns count of deleted memories."""
+        try:
+            # Use filter to delete all points for the user
+            user_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="user_id",
+                        match=MatchValue(value=str(user_id))
+                    )
+                ]
+            )
+            
+            # Get count before deletion for return value
+            search_result = await self.client.search(
+                collection_name=self.collection_name,
+                query_vector=[0.0] * self.embedding_service.get_embedding_dimension(),  # Dummy vector
+                query_filter=user_filter,
+                limit=10000,  # Large limit to get all memories
+                with_payload=False,
+                with_vectors=False
+            )
+            
+            count = len(search_result)
+            
+            if count > 0:
+                # Delete all points for the user
+                await self.client.delete(
+                    collection_name=self.collection_name,
+                    points_selector=user_filter,
+                    wait=True  # Ensure the operation completes
+                )
+            
+            return count
+        except Exception as e:
+            raise QdrantServiceError(
+                message="Failed to delete all user memories from vector database",
+                operation="bulk_delete",
+                collection_name=self.collection_name,
+                original_exception=e
+            )
+
     async def store_memories_batch(
         self,
         memories: List[Dict[str, any]],

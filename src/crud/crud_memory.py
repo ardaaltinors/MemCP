@@ -133,4 +133,33 @@ async def delete_memory(
             operation="delete",
             table_name="memories",
             original_exception=e
+        )
+
+
+async def delete_all_user_memories(
+    db: AsyncSession,
+    user_id: uuid.UUID
+) -> int:
+    """Delete all memories for a user. Returns count of deleted memories."""
+    try:
+        # Get all user memories first to count them
+        memories = await get_user_memories(db, user_id)
+        count = len(memories)
+        
+        if count == 0:
+            return 0
+        
+        # Delete all memories for the user
+        from sqlalchemy import delete
+        stmt = delete(Memory).where(Memory.user_id == user_id)
+        await db.execute(stmt)
+        await db.flush()
+        
+        return count
+    except Exception as e:
+        raise DatabaseOperationError(
+            message="Failed to delete all user memories",
+            operation="bulk_delete",
+            table_name="memories",
+            original_exception=e
         ) 
