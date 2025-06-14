@@ -54,7 +54,7 @@ async def get_user_memories(
 
 @router.get("/graph", response_model=MemoryGraphResponse, tags=["Memories"])
 async def get_memory_graph(
-    similarity_threshold: float = Query(0.5, ge=0.0, le=1.0, description="Minimum similarity threshold for connecting memories"),
+    similarity_threshold: float = Query(0.42, ge=0.0, le=1.0, description="Minimum similarity threshold for connecting memories"),
     current_user: DBUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_async_db)
 ):
@@ -187,7 +187,8 @@ async def create_memory(
         content=memory_in.content,
         db=db,
         user_id=current_user.id,
-        tags=memory_in.tags
+        tags=memory_in.tags,
+        date=memory_in.date
     )
     
     # Get the most recently created memory for response
@@ -232,7 +233,8 @@ async def create_bulk_memories(
                 content=memory_create.content,
                 db=db,
                 user_id=current_user.id,
-                tags=memory_create.tags
+                tags=memory_create.tags,
+                date=memory_create.date
             )
             
             # Get the most recently created memory

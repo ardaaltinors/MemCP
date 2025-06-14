@@ -1,5 +1,6 @@
 import uuid
 from typing import Optional, TYPE_CHECKING
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import Memory
@@ -30,7 +31,7 @@ class MemoryManager:
             upper_score_threshold=upper_score_threshold
         )
 
-    async def store(self, content: str, db: AsyncSession, user_id: uuid.UUID, tags: Optional[list[str]] = None) -> str:
+    async def store(self, content: str, db: AsyncSession, user_id: uuid.UUID, tags: Optional[list[str]] = None, date: Optional['datetime'] = None) -> str:
         """
         Stores a new memory entry in both vector and relational databases.
         
@@ -39,6 +40,7 @@ class MemoryManager:
             db: Database session (injected via FastAPI dependency)
             user_id: The ID of the user storing the memory
             tags: Optional tags for the memory
+            date: Optional date for the memory (defaults to current time)
         """
         # Validate user_id is provided
         if user_id is None:
@@ -55,12 +57,18 @@ class MemoryManager:
         
         # Store in relational database
         try:
-            db_memory = Memory(
-                id=uuid.UUID(memory_id),
-                content=content,
-                tags=tags or [],
-                user_id=user_id
-            )
+            memory_data = {
+                "id": uuid.UUID(memory_id),
+                "content": content,
+                "tags": tags or [],
+                "user_id": user_id
+            }
+            
+            # If a custom date is provided, override the default created_at
+            if date:
+                memory_data["created_at"] = date
+                
+            db_memory = Memory(**memory_data)
             db.add(db_memory)
             await db.flush()  # Use flush instead of commit as get_async_db handles commit
         except Exception as e:

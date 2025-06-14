@@ -12,7 +12,7 @@ class MemoryBase(BaseModel):
 
 class MemoryCreate(MemoryBase):
     """Schema for creating a new memory."""
-    pass
+    date: Optional[datetime] = Field(None, description="Optional date for the memory (defaults to current time)")
 
 
 class MemoryUpdate(BaseModel):
