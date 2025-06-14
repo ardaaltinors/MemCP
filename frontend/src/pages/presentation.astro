@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MemCP: Solving AI Memory Persistence Through Model Context Protocol</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        .presentation-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide {
+            width: 100%;
+            height: 100%;
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            padding: 60px;
+            padding-bottom: 100px; /* Space for navigation */
+            opacity: 0;
+            transform: translateX(100px);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        /* Custom scrollbar for slides */
+        .slide::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .slide::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .slide::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+        
+        .slide::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .slide.active {
+            display: flex;
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .slide.prev {
+            display: flex;
+            opacity: 0;
+            transform: translateX(-100px);
+        }
+
+        /* Navigation */
+        .nav-controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .slide-indicator {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            z-index: 1000;
+        }
+
+        /* Title Slide */
+        .title-slide {
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            text-align: center;
+            min-height: 100%;
+            padding: 40px;
+        }
+
+        .title-slide h1 {
+            font-size: clamp(2.5em, 5vw, 4em);
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #00d4ff, #0099ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.2;
+        }
+
+        .title-slide h2 {
+            font-size: clamp(1.5em, 3vw, 2em);
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 40px;
+        }
+
+        .title-slide .author {
+            font-size: clamp(1.2em, 2vw, 1.5em);
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 40px;
+        }
+
+        .title-slide .university {
+            font-size: clamp(1em, 1.5vw, 1.2em);
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 10px;
+        }
+
+        /* Content Slides */
+        .content-slide {
+            flex-direction: column;
+            justify-content: flex-start;
+            min-height: 100%;
+        }
+
+        .slide-header {
+            margin-bottom: 30px;
+            position: relative;
+            padding-bottom: 20px;
+            flex-shrink: 0;
+        }
+
+        .slide-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100px;
+            height: 3px;
+            background: linear-gradient(90deg, #00d4ff, transparent);
+        }
+
+        .slide-header h2 {
+            font-size: clamp(2em, 4vw, 3em);
+            font-weight: 600;
+            background: linear-gradient(45deg, #ffffff, #cccccc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            font-size: clamp(1em, 1.5vw, 1.3em);
+            line-height: 1.6;
+        }
+
+        /* Problem Statement Slide */
+        .problem-visual {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+            margin-top: 40px;
+        }
+
+        .conversation-box {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .conversation-box::before {
+            content: '❌';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4em;
+            opacity: 0.1;
+        }
+
+        .conversation-box h3 {
+            color: #ff6b6b;
+            margin-bottom: 15px;
+        }
+
+        /* Architecture Diagram */
+        .architecture-diagram {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .arch-component {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .arch-component:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.2);
+        }
+
+        .arch-component h4 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        /* Features List */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 153, 255, 0.05));
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .feature-card h3 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-icon {
+            font-size: 1.5em;
+        }
+
+        /* Code Block */
+        .code-block {
+            background: #1a1a1a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+            margin: 20px 0;
+        }
+
+        .code-block pre {
+            margin: 0;
+            color: #e0e0e0;
+        }
+
+        .code-comment {
+            color: #6a9955;
+        }
+
+        .code-keyword {
+            color: #569cd6;
+        }
+
+        .code-string {
+            color: #ce9178;
+        }
+
+        .code-function {
+            color: #dcdcaa;
+        }
+
+        /* Demo Visualization */
+        .demo-flow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 40px 0;
+            position: relative;
+        }
+
+        .demo-step {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(0, 212, 255, 0.5);
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .demo-step::after {
+            content: '→';
+            position: absolute;
+            right: -40px;
+            font-size: 2em;
+            color: rgba(0, 212, 255, 0.5);
+        }
+
+        .demo-step:last-child::after {
+            display: none;
+        }
+
+        .demo-flow-line {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.3), transparent);
+            z-index: 1;
+        }
+
+        /* Results */
+        .results-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .result-box {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .result-number {
+            font-size: 3em;
+            font-weight: 700;
+            background: linear-gradient(45deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .result-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.1em;
+        }
+
+        /* Conclusion Points */
+        .conclusion-points {
+            list-style: none;
+            margin-top: 30px;
+        }
+
+        .conclusion-points li {
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 4px solid #00d4ff;
+            padding: 20px 30px;
+            margin-bottom: 20px;
+            border-radius: 0 10px 10px 0;
+            position: relative;
+            padding-left: 60px;
+        }
+
+        .conclusion-points li::before {
+            content: '✓';
+            position: absolute;
+            left: 20px;
+            color: #00ff88;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 1000;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            transition: width 0.3s ease;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .slide {
+                padding: 40px 30px;
+                padding-bottom: 100px;
+            }
+            
+            .features-grid,
+            .architecture-diagram {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .results-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .demo-flow {
+                flex-direction: column;
+                gap: 30px;
+            }
+            
+            .demo-step {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .demo-step::after {
+                content: '↓';
+                right: auto;
+                bottom: -25px;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+            
+            .problem-visual {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .code-block {
+                font-size: 0.8em;
+                padding: 15px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .slide {
+                padding: 30px 20px;
+                padding-bottom: 90px;
+            }
+            
+            .slide-header {
+                margin-bottom: 20px;
+            }
+            
+            .slide-content {
+                gap: 15px;
+            }
+            
+            .feature-card,
+            .arch-component {
+                padding: 20px;
+            }
+            
+            .nav-controls {
+                padding: 10px 20px;
+                gap: 15px;
+            }
+            
+            .nav-btn {
+                padding: 8px 16px;
+                font-size: 12px;
+            }
+            
+            .conclusion-points li {
+                padding: 15px 20px;
+                padding-left: 50px;
+            }
+        }
+        
+        @media (max-height: 700px) {
+            .slide {
+                padding: 30px;
+                padding-bottom: 80px;
+            }
+            
+            .slide-header {
+                margin-bottom: 20px;
+                padding-bottom: 15px;
+            }
+            
+            .slide-content {
+                gap: 15px;
+                font-size: 1.1em;
+            }
+            
+            .architecture-diagram,
+            .features-grid {
+                gap: 15px;
+            }
+            
+            .arch-component,
+            .feature-card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="slide-indicator" id="slideIndicator">1 / 13</div>
+
+        <!-- Slide 1: Title -->
+        <div class="slide title-slide active">
+            <h1>Solving AI Memory Persistence<br>Through Model Context Protocol</h1>
+            <h2>Design and Implementation of MemCP</h2>
+            <div class="author">Arda Altınörs</div>
+            <div class="university">Yeditepe University<br>Department of Information Systems and Technologies</div>
+        </div>
+
+        <!-- Slide 2: The Modern AI Integration Challenge -->
+        <div class="slide content-slide">
+            <div class="slide-header">
+                <h2>The Modern AI Integration Challenge 🧩</h2>
+            </div>
+            <div class="slide-content">
+                <p><strong>The Problem:</strong> AI systems need access to external data and tools to be useful. Today, this is messy.</p>
+                
+                <div style="margin-top: 30px;">
+                    <h3 style="color: #ff6b6b; margin-bottom: 20px;">Current State:</h3>
+                    <div class="features-grid">
+                        <div class="feature-card" style="border-color: rgba(255, 107, 107, 0.3);">
+                            <h3><span class="feature-icon">🔧</span> Custom APIs & Ad-hoc Solutions</h3>
+                            <p>Every connection to a database, document store, or service requires custom code</p>
+                        </div>
+                        <div class="feature-card" style="border-color: rgba(255, 107, 107, 0.3);">
+                            <h3><span class="feature-icon">📊</span> Fragmented Data Silos</h3>
+                            <p>Integrations are brittle, hard to maintain, and don't scale well</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 40px; padding: 30px; background: rgba(0, 212, 255, 0.1); border-radius: 15px; border: 2px solid rgba(0, 212, 255, 0.3);">
+                    <h3 style="color: #00d4ff;">The Need:</h3>
+                    <p style="font-size: 1.2em;">A universal standard for AI integrations is required to simplify development and unlock new capabilities.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: A New Standard: Model Context Protocol -->
+        <div class="slide content-slide">
+            <div class="slide-header">
+                <h2>A New Standard: Model Context Protocol (MCP)</h2>
+            </div>
+            <div class="slide-content">
+                <p><strong>The Proposed Solution:</strong> The Model Context Protocol (MCP), an open standard introduced by Anthropic.</p>
+                
+                <div style="margin: 40px 0; text-align: center;">
+                    <h3 style="font-size: 2.5em; color: #00d4ff; margin-bottom: 20px;">The Vision: A "USB-C for AI"</h3>
+                    <p style="font-size: 1.3em;">Instead of custom connectors for everything, MCP provides a <strong>single, universal interface</strong>.</p>
+                </div>
+                
+                <div class="architecture-diagram">
+                    <div class="arch-component">
+                        <h4>🤖 Any AI</h4>
+                        <p>MCP-compatible</p>
+                    </div>
+                    <div class="arch-component" style="background: rgba(0, 212, 255, 0.2);">
+                        <h4>🔌 MCP</h4>
+                        <p>Universal Protocol</p>
+                    </div>
+                    <div class="arch-component">
+                        <h4>💾 Any Data/Tool</h4>
+                        <p>MCP-compatible</p>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 40px; padding: 20px; background: rgba(0, 255, 136, 0.1); border-radius: 15px;">
+                    <strong>Core Goal:</strong> To solve the problems of interoperability, security, and complexity in the AI ecosystem, paving the way for more powerful and integrated applications.
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: A Key Use Case for MCP: Solving AI Amnesia -->
+        <div class="slide content-slide">
+            <div class="slide-header">
+                <h2>A Key Use Case for MCP: Solving AI Amnesia</h2>
+            </div>
+            <div class="slide-content">
+                <p style="font-size: 1.3em; margin-bottom: 30px;"><strong>Now, let's focus on a critical problem that MCP helps solve: AI Amnesia.</strong></p>
+                
+                <div class="problem-visual">
+                    <div class="conversation-box">
+                        <h3>Session 1</h3>
+                        <p>"I prefer Python for coding"</p>
+                        <p>"I'm working on a thesis"</p>
+                    </div>
+                    <div class="conversation-box">
+                        <h3>Session 2</h3>
+                        <p>"What language do I prefer?"</p>
+                        <p><strong>AI: "I don't have that information"</strong></p>
+                    </div>
+                </div>
+                
+                <h3 style="margin-top: 30px; color: #ff6b6b;">The Amnesia Problem:</h3>
+                <ul style="margin-top: 15px;">
+                    <li>📌 Large Language Models can't remember things between conversations</li>
+                    <li>📌 Users have to repeat context in every new session</li>
+                    <li>📌 This prevents AIs from building long-term, personalized relationships</li>
+                </ul>
+                
+                <div style="margin-top: 30px; padding: 20px; background: rgba(0, 212, 255, 0.1); border-radius: 15px;">
+                    <h3 style="color: #00d4ff;">The Opportunity:</h3>
+                    <p>We can use the MCP standard to build a <strong>portable, standardized memory layer</strong> that any AI assistant can use.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Research Objectives -->
+        <div class="slide content-slide">
+            <div class="slide-header">
+                <h2>Research Objectives</h2>
+            </div>
+            <div class="slide-content">
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">🎯</span> Primary Goal</h3>
+                        <p>Demonstrate how MCP can solve the memory persistence problem in AI assistants</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">🔧</span> Implementation</h3>
+                        <p>Develop MemCP - a production-ready MCP server for long-term memory</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">🌐</span> Standardization</h3>
+                        <p>Create a portable memory layer compatible with any MCP-enabled AI</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">📊</span> Validation</h3>
+                        <p>Prove that sophisticated memory can be delivered through standard protocols</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="slide content-slide">
+            <div class="slide-header">
+                <h2>MemCP Architecture</h2>
+            </div>
+            <div class="slide-content">
+                <div class="architecture-diagram">
+                    <div class="arch-component">
+                        <h4>🌐 Web Interface</h4>
+                        <p>User dashboard for memory management</p>
+                    </div>
+                    <div class="arch-component">
+                        <h4>🔧 MCP Server</h4>
+                        <p>AI assistant interface with memory tools</p>
+                    </div>
+                    <div class="arch-component">
+                        <h4>🗄️ PostgreSQL</h4>
+                        <p>Structured data storage</p>
+                    </div>
+                    <div class="arch-component">
+                        <h4>🔍 Qdrant</h4>
+                        <p>Vector embeddings for semantic search</p>
+                    </div>
+                    <div class="arch-component">
+                        <h4>⚡ Celery + RabbitMQ</h4>
+                        <p>Asynchronous task processing</p>
+                    </div>
+                    <div class="arch-component">
+                        <h4>🤖 LLM Integration</h4>
+                        <p>Profile synthesis with AI</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Key Features -->
+        <div class="slide content-slide">
+            <div class="slide-header">
+                <h2>MemCP Features</h2>
+            </div>
+            <div class="slide-content">
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">💡</span> remember_fact</h3>
+                        <p>Store important information, preferences, and personal details</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">🔍</span> get_related_memory</h3>
+                        <p>Retrieve semantically similar memories using vector search</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">📝</span> record_and_get_context</h3>
+                        <p>Track conversation history and synthesize user profiles</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">🗑️</span> remove_memory</h3>
+                        <p>User control over their data with deletion capabilities</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Implementation Example -->
+        <div class="slide content-slide">
+            <div class="slide-header">
+                <h2>Implementation Example</h2>
+            </div>
+            <div class="slide-content">
+                <p>MCP Tool Registration:</p>
+                <div class="code-block">
+                    <pre><span class="code-keyword">@mcp_app.tool()</span>
+<span class="code-keyword">async def</span> <span class="code-function">remember_fact</span>(
+    content: str = Field(..., description=<span class="code-string">"The fact to remember"</span>),
+    tags: list[str] = Field(default_factory=list)
+) -> MemoryResponse:
+    <span class="code-string">"""Store important information for future conversations"""</span>
+    
+    <span class="code-comment"># Generate embedding for semantic search</span>
+    embedding = <span class="code-keyword">await</span> embedding_generator.generate(content)
+    
+    <span class="code-comment"># Store in both databases</span>
+    <span class="code-keyword">await</span> vector_store.upsert(embedding)
+    memory = crud_memory.create(content, tags)
+    
+    <span class="code-keyword">return</span> MemoryResponse(success=<span class="code-keyword">True</span>, memory_id=memory.id)</pre>
+                </div>
+                <p style="margin-top: 20px;">The dual storage strategy enables both reliable persistence and semantic understanding.</p>
+            </div>
+        </div>
+
+        <!-- Slide 8: How It Works -->
+        <div class="slide content-slide">
+            <div class="slide-header">
+                <h2>How MemCP Works</h2>
+            </div>
+            <div class="slide-content">
+                <div class="demo-flow">
+                    <div class="demo-flow-line"></div>
+                    <div class="demo-step">
+                        <strong>User</strong>
+                        <small>"I love Python"</small>
+                    </div>
+                    <div class="demo-step">
+                        <strong>AI + MCP</strong>
+                        <small>Calls remember_fact</small>
+                    </div>
+                    <div class="demo-step">
+                        <strong>MemCP</strong>
+                        <small>Stores memory</small>
+                    </div>
+                    <div class="demo-step">
+                        <strong>Next Session</strong>
+                        <small>Memory retrieved</small>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 40px;">
+                    <h3>Three-Phase Memory Pipeline:</h3>
+                    <ol style="margin-top: 20px;">
+                        <li><strong>Memory Creation:</strong> Extract and store facts with embeddings</li>
+                        <li><strong>Memory Retrieval:</strong> Semantic search across user's memories</li>
+                        <li><strong>Profile Synthesis:</strong> LLM analyzes conversations to build user profile</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Technical Innovations -->
+        <div class="slide content-slide">
+            <div class="slide-header">
+                <h2>Technical Innovations</h2>
+            </div>
+            <div class="slide-content">
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">🎭</span> Dual-Server Architecture</h3>
+                        <p>Separate interfaces optimized for humans (web) and AI (MCP)</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">🔄</span> Hybrid Storage</h3>
+                        <p>PostgreSQL for structure + Qdrant for semantic understanding</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">⚡</span> Asynchronous Processing</h3>
+                        <p>Non-blocking profile synthesis with Celery workers</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3><span class="feature-icon">🤖</span> LLM Integration</h3>
+                        <p>Intelligent profile synthesis from conversation history</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Results & Impact -->
+        <div class="slide content-slide">
+            <div class="slide-header">
+                <h2>Results & Impact</h2>
+            </div>
+            <div class="slide-content">
+                <div class="results-container">
+                    <div class="result-box">
+                        <div class="result-number">✓</div>
+                        <div class="result-label">Successfully bridges isolated AI conversations</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-number">🚀</div>
+                        <div class="result-label">First production-ready MCP memory server</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-number">🔌</div>
+                        <div class="result-label">Works with any MCP-compatible AI</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-number">🌐</div>
+                        <div class="result-label">Open-source contribution to MCP ecosystem</div>
+                    </div>
+                </div>
+                
+                <p style="margin-top: 30px;"><strong>Key Achievement:</strong> Proved that sophisticated memory capabilities can be delivered through standardized protocols instead of platform-specific solutions.</p>
+            </div>
+        </div>
+
+        <!-- Slide 11: Future Directions -->
+        <div class="slide content-slide">
+            <div class="slide-header">
+                <h2>Future Directions</h2>
+            </div>
+            <div class="slide-content">
+                <ul class="conclusion-points">
+                    <li><strong>Enhanced Memory Management:</strong> Conflict resolution, temporal decay, and relevance scoring</li>
+                    <li><strong>Multi-Modal Support:</strong> Extend beyond text to images, audio, and structured data</li>
+                    <li><strong>Privacy Features:</strong> End-to-end encryption while maintaining search capabilities</li>
+                    <li><strong>MCP Standards:</strong> Contribute to protocol evolution with batch operations and streaming</li>
+                </ul>
+                
+                <div style="margin-top: 40px; padding: 20px; background: rgba(0, 212, 255, 0.1); border-radius: 15px;">
+                    <p><strong>Broader Applications:</strong></p>
+                    <ul style="margin-top: 15px;">
+                        <li>📚 Educational systems with persistent student progress</li>
+                        <li>🏥 Healthcare AI with patient history awareness</li>
+                        <li>🏢 Enterprise knowledge management</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Conclusion -->
+        <div class="slide content-slide">
+            <div class="slide-header">
+                <h2>Conclusion</h2>
+            </div>
+            <div class="slide-content">
+                <div style="text-align: center; margin-top: 50px;">
+                    <h3 style="font-size: 2.5em; margin-bottom: 30px; color: #00d4ff;">MemCP validates MCP's vision as the "USB-C for AI"</h3>
+                    
+                    <p style="font-size: 1.4em; line-height: 1.8; max-width: 800px; margin: 0 auto;">
+                        By creating a universal memory layer through open standards, we've shown that AI memory doesn't need to be locked within proprietary platforms.
+                    </p>
+                    
+                    <div style="margin-top: 50px;">
+                        <p style="font-size: 1.2em; color: rgba(255, 255, 255, 0.7);">🔗 github.com/ardaaltinors/MemCP</p>
+                    </div>
+                    
+                    <div style="margin-top: 80px;">
+                        <h3 style="font-size: 2em; color: #00ff88;">Thank You!</h3>
+                        <p style="font-size: 1.2em; color: rgba(255, 255, 255, 0.6); margin-top: 20px;">Questions?</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Controls -->
+        <div class="nav-controls">
+            <button class="nav-btn" id="prevBtn">← Previous</button>
+            <button class="nav-btn" id="nextBtn">Next →</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        const slideIndicator = document.getElementById('slideIndicator');
+        const progressFill = document.getElementById('progressFill');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        function showSlide(index) {
+            // Hide all slides
+            slides.forEach((slide, i) => {
+                slide.classList.remove('active', 'prev');
+                if (i < index) {
+                    slide.classList.add('prev');
+                }
+            });
+
+            // Show current slide
+            slides[index].classList.add('active');
+
+            // Update indicator and progress
+            slideIndicator.textContent = `${index + 1} / ${totalSlides}`;
+            progressFill.style.width = `${((index + 1) / totalSlides) * 100}%`;
+
+            // Update button states
+            prevBtn.disabled = index === 0;
+            nextBtn.disabled = index === totalSlides - 1;
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides - 1) {
+                currentSlide++;
+                showSlide(currentSlide);
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                showSlide(currentSlide);
+            }
+        }
+
+        // Event listeners
+        nextBtn.addEventListener('click', nextSlide);
+        prevBtn.addEventListener('click', prevSlide);
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') nextSlide();
+            if (e.key === 'ArrowLeft') prevSlide();
+            if (e.key === 'Home') {
+                currentSlide = 0;
+                showSlide(currentSlide);
+            }
+            if (e.key === 'End') {
+                currentSlide = totalSlides - 1;
+                showSlide(currentSlide);
+            }
+        });
+
+        // Touch/swipe support for mobile
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchEndX < touchStartX - 50) {
+                nextSlide();
+            }
+            if (touchEndX > touchStartX + 50) {
+                prevSlide();
+            }
+        }
+
+        // Initialize
+        showSlide(0);
+    </script>
+</body>
+</html>
