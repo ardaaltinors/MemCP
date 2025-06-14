@@ -1,6 +1,6 @@
 import { type FC, useState } from "react";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
-import { loginUser } from "../../api";
+import { loginUser, getApiKey } from "../../api";
 import { authUtils } from "../../utils/auth";
 import type { Token } from "../../types";
 
@@ -80,9 +80,24 @@ export const LoginForm: FC<LoginFormProps> = ({ onSubmit, onSuccess, onError }) 
                 onSuccess(token);
             }
             
-            // Redirect to dashboard
-            console.log("Redirecting to dashboard...");
-            window.location.href = '/dashboard';
+            // Check if user has API key
+            try {
+                console.log("Checking for existing API key...");
+                const apiKeyResponse = await getApiKey(token.access_token);
+                
+                // If API key exists, redirect to dashboard
+                if (apiKeyResponse.api_key) {
+                    console.log("User has API key, redirecting to dashboard...");
+                    window.location.href = '/dashboard';
+                } else {
+                    console.log("No API key found, redirecting to credentials...");
+                    window.location.href = '/credentials';
+                }
+            } catch (apiKeyError) {
+                // If fetching API key fails (404 or other error), redirect to credentials
+                console.log("Error fetching API key or no API key exists, redirecting to credentials...");
+                window.location.href = '/credentials';
+            }
         } catch (error) {
             console.error("Login error:", error);
             const errorMessage = error instanceof Error ? error.message : "Login failed. Please try again.";

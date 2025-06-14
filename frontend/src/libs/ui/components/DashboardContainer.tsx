@@ -307,7 +307,7 @@ export const DashboardContainer: React.FC = () => {
       </div>
 
       {/* Timeline Section - Below the main content, accessible by scrolling */}
-      <div className="bg-gray-900 border-t border-gray-700 h-80">
+      <div className="bg-gray-900 border-t border-gray-700 h-[80vh]">
           {/* Timeline Header */}
           <div className="h-12 flex items-center justify-between px-6 border-b border-gray-700">
             <div className="flex items-center gap-4">
@@ -462,7 +462,7 @@ export const DashboardContainer: React.FC = () => {
                 {memories.length > 0 && (
                   <div className="relative">
                     <div className="absolute left-1/2 -translate-x-1/2 w-3 h-3 bg-gray-600 rounded-full ring-4 ring-gray-900" />
-                    <div className="text-center mt-8 text-sm text-gray-500">End of timeline</div>
+                    <div className="text-center mt-8 text-sm text-gray-500 pt-4">End of timeline</div>
                   </div>
                 )}
             </div>

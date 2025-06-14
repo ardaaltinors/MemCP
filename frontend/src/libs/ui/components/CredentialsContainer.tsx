@@ -3,29 +3,36 @@ import { getApiKey, createApiKey, revokeApiKey } from '@libs/api';
 import type { ApiKeyResponse } from '@libs/types';
 import { authUtils } from '@libs/utils/auth';
 
-// MCP Client configuration
-const MCP_CLIENTS = [
+// MCP Client configuration - dynamic instructions based on connection URL
+const getMcpClients = (connectionUrl: string) => [
   {
     id: 'claude',
     name: 'Anthropic Claude',
     description: 'Claude AI Assistant with advanced reasoning capabilities',
     instructions: [
-      'Open Claude and go to Settings',
-      'Navigate to MCP Settings',
-      'Add your connection URL',
-      'Save the configuration'
-    ]
+      'Open claude.ai',
+      'Settings → Integrations',
+      'Add Integration',
+      'Integration name: MemCP',
+      `Integration URL: ${connectionUrl || 'Your connection URL'}`
+    ],
+    hasCodeBlock: false
   },
   {
-    id: 'openai',
-    name: 'OpenAI ChatGPT',
-    description: 'ChatGPT with custom plugins and extensions',
+    id: 'cursor',
+    name: 'Cursor',
+    description: 'AI-powered code editor with MCP support',
     instructions: [
-      'Open ChatGPT Settings',
-      'Go to Plugins & Extensions',
-      'Add MCP Connection',
-      'Enter your connection URL'
-    ]
+      'Cursor → Settings → Cursor Settings',
+      'MCP Tools → Edit → mcp.json',
+      'Add the following configuration:'
+    ],
+    hasCodeBlock: true,
+    codeBlock: JSON.stringify({
+      "memcp": {
+        "url": connectionUrl || "http://127.0.0.1:4200/mcp/"
+      }
+    }, null, 2)
   }
 ];
 
@@ -129,14 +136,26 @@ export const CredentialsContainer: React.FC = () => {
   };
 
   const handleCopyClientInfo = async () => {
-    const client = MCP_CLIENTS.find(c => c.id === selectedClient);
+    const mcpClients = getMcpClients(apiKeyData?.connection_url || '');
+    const client = mcpClients.find(c => c.id === selectedClient);
     if (client && apiKeyData?.connection_url) {
       const clientInfo = `Client: ${client.name}\nConnection URL: ${apiKeyData.connection_url}\nInstructions:\n${client.instructions
         .map((step, i) => `${i + 1}. ${step}`)
-        .join('\n')}`;
+        .join('\n')}${client.hasCodeBlock ? `\n\nConfiguration:\n${client.codeBlock}` : ''}`;
       const success = await copyToClipboard(clientInfo);
       if (success) {
         showCopyFeedback('clientInfo');
+      }
+    }
+  };
+
+  const handleCopyCodeBlock = async () => {
+    const mcpClients = getMcpClients(apiKeyData?.connection_url || '');
+    const client = mcpClients.find(c => c.id === selectedClient);
+    if (client?.codeBlock) {
+      const success = await copyToClipboard(client.codeBlock);
+      if (success) {
+        showCopyFeedback('codeBlock');
       }
     }
   };
@@ -286,7 +305,7 @@ export const CredentialsContainer: React.FC = () => {
                   className="w-full p-2 md:p-3 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm md:text-base focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors"
                 >
                   <option value="">Choose a client...</option>
-                  {MCP_CLIENTS.map((client) => (
+                  {getMcpClients(apiKeyData?.connection_url || '').map((client) => (
                     <option key={client.id} value={client.id}>
                       {client.name}
                     </option>
@@ -297,7 +316,8 @@ export const CredentialsContainer: React.FC = () => {
               {selectedClient && (
                 <div className="space-y-4 md:space-y-6 flex-1">
                   {(() => {
-                    const client = MCP_CLIENTS.find(c => c.id === selectedClient);
+                    const mcpClients = getMcpClients(apiKeyData?.connection_url || '');
+                    const client = mcpClients.find(c => c.id === selectedClient);
                     return client ? (
                       <>
                         {/* Client Info */}
@@ -326,14 +346,30 @@ export const CredentialsContainer: React.FC = () => {
                           </ol>
                         </div>
 
-                        {/* Copy Client Info Button */}
-                        <button
-                          onClick={handleCopyClientInfo}
-                          disabled={!apiKeyData?.connection_url}
-                          className="w-full px-4 md:px-6 py-3 md:py-4 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/50 text-emerald-400 rounded-xl transition-colors text-sm md:text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {copyFeedback.clientInfo ? 'Copied!' : 'Copy Client Info'}
-                        </button>
+                        {/* Code Block for Cursor */}
+                        {client.hasCodeBlock && client.codeBlock && (
+                          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 md:p-6">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="text-sm md:text-md font-medium text-white flex items-center">
+                                <svg className="w-4 h-4 md:w-5 md:h-5 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                </svg>
+                                Configuration
+                              </h4>
+                              <button
+                                onClick={handleCopyCodeBlock}
+                                className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 text-blue-400 rounded-md transition-colors text-xs font-medium"
+                              >
+                                {copyFeedback.codeBlock ? 'Copied!' : 'Copy'}
+                              </button>
+                            </div>
+                            <pre className="bg-gray-900 border border-gray-600 rounded-lg p-4 overflow-x-auto">
+                              <code className="text-gray-300 text-sm font-mono whitespace-pre">
+                                {client.codeBlock}
+                              </code>
+                            </pre>
+                          </div>
+                        )}
 
                         {!apiKeyData?.connection_url && (
                           <p className="text-xs md:text-sm text-gray-500 text-center">

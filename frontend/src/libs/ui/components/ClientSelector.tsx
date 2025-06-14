@@ -121,16 +121,18 @@ export function ClientSelector() {
         <div className="text-sm text-gray-400 space-y-2">
           {selectedClient.id === 'claude' && (
             <div>
-              <p>1. Open Claude and go to Settings</p>
-              <p>2. Navigate to MCP Settings</p>
-              <p>3. Add your connection URL</p>
+              <p>1. Open claude.ai</p>
+              <p>2. Settings → Integrations</p>
+              <p>3. Add Integration</p>
+              <p>4. Integration name: MemCP</p>
+              <p>5. Integration URL: Your connection URL</p>
             </div>
           )}
           {selectedClient.id === 'cursor' && (
             <div>
-              <p>1. Open Cursor preferences</p>
-              <p>2. Go to Extensions → MCP</p>
-              <p>3. Add your server URL</p>
+              <p>1. Cursor → Settings → Cursor Settings</p>
+              <p>2. MCP Tools → Edit → mcp.json</p>
+              <p>3. Add: {"{"}"memcp": {"{"}"url": "http://127.0.0.1:4200/mcp/"{"}"}{"}"}{"}"}</p>
             </div>
           )}
           {selectedClient.id === 'vscode' && (
