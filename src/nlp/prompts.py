@@ -81,9 +81,8 @@ Based on the **most recent** user interactions, provide a concise and insightful
    * If information is explicitly stated as no longer relevant by the user, remove or nullify it.  
 3. **Recency and Relevance:** Give more weight to recent information, especially for the "Current Context Summary" and fields like current\_goals\_explicit. However, stable traits like languages\_spoken should persist unless explicitly changed.  
 4. **Inference** with **Caution:** Distinguish between explicitly stated facts and reasonable inferences. For inferred data (e.g., personality\_traits\_inferred, timezone\_inferred), ensure it's strongly supported by consistent patterns in the conversation. If unsure, err on the side of not including the inference or marking it with lower confidence (if a confidence field is used).  
-5. **Conciseness:** Be brief and to the point, especially in the summary. Avoid conversational filler.  
-6. **Timestamp:** Always update the last\_updated\_timestamp in the JSON metadata to the current time of processing.  
-7. **Focus** on **User, Not AI:** The profile is about the *user*. Do not include information about the AI's responses unless it directly reveals something about the user (e.g., user is correcting the AI about their preferences).
+5. **Conciseness:** Be brief and to the point, especially in the summary. Avoid conversational filler.
+6. **Focus** on **User, Not AI:** The profile is about the *user*. Do not include information about the AI's responses unless it directly reveals something about the user (e.g., user is correcting the AI about their preferences).
 
 ## **Input Data:**
 
