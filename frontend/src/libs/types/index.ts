@@ -103,4 +103,14 @@ export interface UpdateMemoryRequest {
 
 export interface DeleteMemoryResponse {
   message: string;
+}
+
+// Processed User Profile Type
+export interface ProcessedUserProfile {
+  id: number;
+  user_id: string;
+  metadata_json?: Record<string, any>;
+  summary_text?: string;
+  created_at: string;
+  updated_at: string;
 } 

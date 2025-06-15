@@ -142,6 +142,14 @@ async def get_user_processed_profile(
             detail="No processed profile found for this user. Profile is generated automatically when you add memories."
         )
     
+    # Parse metadata_json if it's a string
+    if processed_profile.metadata_json and isinstance(processed_profile.metadata_json, str):
+        try:
+            import json
+            processed_profile.metadata_json = json.loads(processed_profile.metadata_json)
+        except json.JSONDecodeError:
+            processed_profile.metadata_json = None
+    
     return processed_profile
 
 

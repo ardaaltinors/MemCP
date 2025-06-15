@@ -3,6 +3,7 @@ import { getCurrentUser } from '@libs/api';
 import type { User } from '@libs/types';
 import { authUtils } from '@libs/utils/auth';
 import { Logo } from '@static/images';
+import { ProfileModal } from './ProfileModal';
 
 interface DashboardHeaderProps {
   title?: string;
@@ -18,6 +19,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showLogoutPopup, setShowLogoutPopup] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const fetchUser = async () => {
     try {
@@ -144,6 +146,18 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                       <p className="text-gray-400 text-xs md:text-sm truncate">{user.email}</p>
                     </div>
                   )}
+                  <button
+                    onClick={() => {
+                      setIsProfileModalOpen(true);
+                      setShowLogoutPopup(false);
+                    }}
+                    className="w-full px-3 md:px-4 py-2 md:py-3 text-left text-gray-300 hover:bg-gray-800 transition-colors flex items-center space-x-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a3 3 0 11-6 0 3 3 0 016 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span className="text-sm md:text-base">View Profile</span>
+                  </button>
                   <a
                     href="/settings"
                     className="w-full px-3 md:px-4 py-2 md:py-3 text-left text-gray-300 hover:bg-gray-800 transition-colors flex items-center space-x-2"
@@ -177,6 +191,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           onClick={() => setShowLogoutPopup(false)}
         />
       )}
+      
+      <ProfileModal 
+        isOpen={isProfileModalOpen} 
+        onClose={() => setIsProfileModalOpen(false)} 
+      />
 
     </>
   );

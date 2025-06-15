@@ -1,4 +1,4 @@
-import type { UserCreate, User, Token, ApiKeyResponse, CreateApiKeyResponse, RevokeApiKeyResponse, MemoryGraphResponse, Memory, CreateMemoryRequest, UpdateMemoryRequest, DeleteMemoryResponse } from "../types";
+import type { UserCreate, User, Token, ApiKeyResponse, CreateApiKeyResponse, RevokeApiKeyResponse, MemoryGraphResponse, Memory, CreateMemoryRequest, UpdateMemoryRequest, DeleteMemoryResponse, ProcessedUserProfile } from "../types";
 
 const BASE_URL = "/api/auth";
 const MEMORY_BASE_URL = "/api/memories";
@@ -219,6 +219,25 @@ export const deleteAllMemories = async (token: string): Promise<{ message: strin
     method: "DELETE",
     headers: {
       "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    const errorMessage = errorData.message || errorData.detail || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
+};
+
+// Get Processed User Profile API
+export const getProcessedUserProfile = async (token: string): Promise<ProcessedUserProfile> => {
+  const response = await fetch(`${MEMORY_BASE_URL}/processed-profile`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
     },
   });
 
