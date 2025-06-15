@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import logging
 import signal
 import sys
+from datetime import datetime, timezone
 
 load_dotenv()
 
@@ -27,6 +28,9 @@ logger = logging.getLogger(__name__)
 mcp_thread = None
 mcp_shutdown_event = threading.Event()
 mcp_server = None
+
+# Track server start time
+server_start_time = None
 
 # Function to run the MCP server
 def run_mcp_server():
@@ -96,6 +100,11 @@ async def lifespan(app: FastAPI):
     
     # Startup
     logger.info("FastAPI application starting up...")
+    
+    # Record server start time
+    global server_start_time
+    server_start_time = datetime.now(timezone.utc)
+    
     try:
         # Start MCP server thread
         mcp_thread = threading.Thread(target=run_mcp_server, daemon=False)
@@ -166,17 +175,64 @@ app.include_router(memory.router, prefix="/memories", tags=["Memories"])
 async def health_check():
     """
     Main health check endpoint.
-    Returns comprehensive system status.
+    Returns comprehensive system status with uptime.
     """
     try:
-        return perform_full_health_check()
+        health_status = perform_full_health_check()
+        
+        # Calculate uptime if server has started
+        if server_start_time:
+            current_time = datetime.now(timezone.utc)
+            uptime_seconds = (current_time - server_start_time).total_seconds()
+            
+            # Format uptime in a human-readable format
+            days = int(uptime_seconds // 86400)
+            hours = int((uptime_seconds % 86400) // 3600)
+            minutes = int((uptime_seconds % 3600) // 60)
+            seconds = int(uptime_seconds % 60)
+            
+            uptime_formatted = ""
+            if days > 0:
+                uptime_formatted += f"{days}d "
+            if hours > 0 or days > 0:
+                uptime_formatted += f"{hours}h "
+            if minutes > 0 or hours > 0 or days > 0:
+                uptime_formatted += f"{minutes}m "
+            uptime_formatted += f"{seconds}s"
+            
+            health_status["uptime"] = {
+                "seconds": uptime_seconds,
+                "formatted": uptime_formatted.strip(),
+                "start_time": server_start_time.isoformat()
+            }
+        else:
+            health_status["uptime"] = {
+                "seconds": 0,
+                "formatted": "0s",
+                "start_time": None
+            }
+            
+        return health_status
     except Exception as e:
         logger.error(f"Health check failed: {e}", exc_info=True)
         return {
             "status": "unhealthy",
             "error": str(e),
-            "services": {}
+            "services": {},
+            "uptime": {
+                "seconds": 0,
+                "formatted": "0s",
+                "start_time": None
+            }
         }
+
+@app.get("/healthcheck")
+async def health_check_alias():
+    """
+    Alias for /health endpoint for compatibility.
+    Returns comprehensive system status with uptime.
+    """
+    return await health_check()
 
 @app.get("/ping")
 async def ping():

@@ -75,22 +75,28 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   };
 
   const renderMetadata = (metadata: Record<string, any>) => {
-    return Object.entries(metadata).map(([key, value]) => {
-      if (key === 'profile_id' && value === null) return null;
-      
-      const renderedValue = renderValue(value);
-      
-      return (
-        <div key={key} className="flex justify-between items-start gap-4 py-2">
-          <span className="text-gray-400 capitalize">
-            {key.replace(/_/g, ' ')}:
-          </span>
-          <div className="text-gray-200 text-right">
-            {renderedValue}
+    return Object.entries(metadata)
+      .filter(([key, value]) => {
+        // Filter out null, undefined, empty strings, and empty arrays
+        if (value === null || value === undefined || value === '') return false;
+        if (Array.isArray(value) && value.length === 0) return false;
+        if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) return false;
+        return true;
+      })
+      .map(([key, value]) => {
+        const renderedValue = renderValue(value);
+        
+        return (
+          <div key={key} className="flex justify-between items-start gap-4 py-2">
+            <span className="text-gray-400 capitalize">
+              {key.replace(/_/g, ' ')}:
+            </span>
+            <div className="text-gray-200 text-right">
+              {renderedValue}
+            </div>
           </div>
-        </div>
-      );
-    }).filter(Boolean);
+        );
+      });
   };
 
   return (
