@@ -1,6 +1,6 @@
 from fastmcp import FastMCP, Context
 from pydantic import Field
-from typing import Optional, List
+from typing import Optional, List, Union
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.middleware import Middleware
@@ -9,6 +9,10 @@ from src.db import init_db
 from src.db.database import get_async_sessionmaker
 from src.middlewares import UserCredentialMiddleware
 from src.utils.mcp_context import get_user_id_from_context
+from src.utils.tag_parser import parse_tags_input
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # Initialize the database
@@ -40,14 +44,16 @@ async def remember_fact(
             "For example, use 'I don't like OpenAI' instead of 'The user does not like OpenAI'."
         )
     ),
-    tags: Optional[List[str]] = Field(
+    tags: Union[List[str], str, None] = Field(
         default=None, 
         description=(
-        'Optional list of tags to categorize the memory. Must be an actual array/list, not a string. '
-        'Example: tags=["work", "project", "deadline"]. Do NOT provide as \'["tag1", "tag2"]\' (string). '
+        'Optional list of tags to categorize the memory. Can be provided as: '
+        '1) A list: ["work", "project", "deadline"] '
+        '2) A JSON string: \'["work", "project", "deadline"]\' '
+        '3) Comma-separated: "work, project, deadline" '
+        '4) Single tag: "work" '
         'Maximum 3 tags.'
-        ),
-        max_length=3
+        )
     ),
     ctx: Context = None
 ) -> str:
@@ -58,18 +64,31 @@ async def remember_fact(
     Also call this tool when the user directly asks you to remember something.
     IMPORTANT: Always phrase the 'content' from the user's point of view, using "I", "my", "me" etc...
     """
-    # Handle case where tags might be passed as a JSON string
-    if tags and isinstance(tags, str):
-        try:
-            import json
-            tags = json.loads(tags)
-        except:
-            # If it fails, treat as a single tag
-            tags = [tags]
+    # Parse and validate tags using the helper function with error handling
+    try:
+        parsed_tags = parse_tags_input(tags)
+        
+        # Log the tag parsing for debugging
+        if ctx:
+            await ctx.debug(f"Original tags input: {tags} (type: {type(tags).__name__})")
+            await ctx.debug(f"Parsed tags: {parsed_tags}")
+        
+        # Enforce maximum 3 tags limit
+        if parsed_tags and len(parsed_tags) > 3:
+            parsed_tags = parsed_tags[:3]
+            if ctx:
+                await ctx.debug(f"Truncated tags to first 3: {parsed_tags}")
+                
+    except Exception as e:
+        # If tag parsing fails for any reason, continue without tags
+        logger.warning(f"Failed to parse tags, continuing without tags. Error: {e}")
+        if ctx:
+            await ctx.debug(f"Failed to parse tags: {e}. Storing memory without tags.")
+        parsed_tags = None
     
     if ctx:
         user_id = get_user_id_from_context(ctx)
-        await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Storing new memory with {len(tags) if tags else 0} tags")
+        await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Storing new memory with {len(parsed_tags) if parsed_tags else 0} tags")
         await ctx.debug(f"Memory content length: {len(content)} characters")
     
     session_maker = get_async_sessionmaker()
@@ -77,7 +96,7 @@ async def remember_fact(
         try:
             # Get user_id from context
             user_id = get_user_id_from_context(ctx)
-            result = await memory_manager.store(content, db, user_id, tags)
+            result = await memory_manager.store(content, db, user_id, parsed_tags)
             await db.commit()  # Explicitly commit the transaction
             
             if ctx:
@@ -238,7 +257,7 @@ async def remove_memory(
 
 
 @mcp.custom_route("/health", methods=["GET"])
-async def health_check(request: Request) -> PlainTextResponse:
+async def health_check(_: Request) -> PlainTextResponse:
     return PlainTextResponse("OK")
 
 
