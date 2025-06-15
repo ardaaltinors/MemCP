@@ -43,8 +43,9 @@ async def remember_fact(
     tags: Optional[List[str]] = Field(
         default=None, 
         description=(
-        'Optional tags to help categorize the memory. Provide as a list of strings, '
-        'for example: ["work", "project", "deadline"]. Maximum of 3 tags allowed.'
+        'Optional list of tags to categorize the memory. Must be an actual array/list, not a string. '
+        'Example: tags=["work", "project", "deadline"]. Do NOT provide as \'["tag1", "tag2"]\' (string). '
+        'Maximum 3 tags.'
         ),
         max_length=3
     ),
@@ -57,6 +58,15 @@ async def remember_fact(
     Also call this tool when the user directly asks you to remember something.
     IMPORTANT: Always phrase the 'content' from the user's point of view, using "I", "my", "me" etc...
     """
+    # Handle case where tags might be passed as a JSON string
+    if tags and isinstance(tags, str):
+        try:
+            import json
+            tags = json.loads(tags)
+        except:
+            # If it fails, treat as a single tag
+            tags = [tags]
+    
     if ctx:
         user_id = get_user_id_from_context(ctx)
         await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Storing new memory with {len(tags) if tags else 0} tags")

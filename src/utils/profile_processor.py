@@ -108,7 +108,15 @@ class ProfileProcessor:
             last_updated_timestamp_iso = None
 
             if existing_profile:
-                existing_metadata_json_str = existing_profile.metadata_json or ""
+                # Handle metadata_json which could be a dict (JSONB) or string
+                if existing_profile.metadata_json is not None:
+                    if isinstance(existing_profile.metadata_json, dict):
+                        existing_metadata_json_str = json.dumps(existing_profile.metadata_json)
+                    else:
+                        existing_metadata_json_str = str(existing_profile.metadata_json)
+                else:
+                    existing_metadata_json_str = ""
+                
                 existing_summary_text = existing_profile.summary_text or ""
                 last_updated_timestamp_iso = existing_profile.updated_at.isoformat()
 
