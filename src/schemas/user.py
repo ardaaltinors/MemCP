@@ -61,4 +61,16 @@ class ConnectionUrlResponse(BaseModel):
 
 class PasswordChangeRequest(BaseModel):
     old_password: str
-    new_password: str 
+    new_password: str
+
+# Schema for processed user profile
+class ProcessedUserProfile(BaseModel):
+    id: int
+    user_id: uuid.UUID
+    metadata_json: Optional[dict] = None
+    summary_text: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True 

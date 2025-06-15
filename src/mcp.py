@@ -32,7 +32,10 @@ async def remember_fact(
     ),
     tags: Optional[List[str]] = Field(
         default=None, 
-        description="Optional tags to help categorize the memory. Max 3 tags.", 
+        description=(
+        'Optional tags to help categorize the memory. Must be provided as a JSON array '
+        '(e.g., ["tag1", "tag2"]). Do not wrap the list in quotes. Maximum of 3 tags allowed.'
+        ),
         max_length=3
     ),
     ctx: Context = None

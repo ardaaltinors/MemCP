@@ -8,7 +8,9 @@ from src.routers.auth import get_current_active_user, get_current_active_superus
 from src.db.models.user import User as DBUser
 from src.schemas import memory as memory_schema
 from src.schemas.graph import MemoryGraphResponse
+from src.schemas.user import ProcessedUserProfile
 from src.crud import crud_memory
+from src.crud.crud_processed_user_profile import get_processed_user_profile
 from src.memory_manager import MemoryManager
 from src.services.graph_service import GraphService
 from src.core.context import set_current_user_id
@@ -119,6 +121,28 @@ async def search_memories(
         "results": enhanced_results,
         "total_results": len(enhanced_results)
     }
+
+
+@router.get("/processed-profile", response_model=ProcessedUserProfile, tags=["Memories"])
+async def get_user_processed_profile(
+    current_user: DBUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Get the processed user profile containing AI-generated insights about the user.
+    
+    This returns metadata and summary text generated from analyzing the user's memories.
+    The profile is automatically generated and updated when memories are added or modified.
+    """
+    processed_profile = await get_processed_user_profile(db=db, user_id=current_user.id)
+    
+    if not processed_profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No processed profile found for this user. Profile is generated automatically when you add memories."
+        )
+    
+    return processed_profile
 
 
 @router.delete("/all", tags=["Memories"])
