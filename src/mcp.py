@@ -172,46 +172,46 @@ async def remove_memory(
             raise e
 
 
-@mcp.tool()
-async def store_memories_batch(
-    memories: List[dict] = Field(
-        description="List of memories to store. Each memory should have 'content' (required) and 'tags' (optional) fields."
-    ),
-    ctx: Context = None
-) -> str:
-    """
-    Store multiple memories in batch with progress reporting.
+# @mcp.tool()
+# async def store_memories_batch(
+#     memories: List[dict] = Field(
+#         description="List of memories to store. Each memory should have 'content' (required) and 'tags' (optional) fields."
+#     ),
+#     ctx: Context = None
+# ) -> str:
+#     """
+#     Store multiple memories in batch with progress reporting.
     
-    This is useful when you need to store many memories at once, such as:
-    - Importing conversation history
-    - Storing multiple related facts
-    - Bulk memory operations
+#     This is useful when you need to store many memories at once, such as:
+#     - Importing conversation history
+#     - Storing multiple related facts
+#     - Bulk memory operations
     
-    The tool will report progress as it processes the memories.
-    """
-    if ctx:
-        user_id = get_user_id_from_context(ctx)
-        await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Starting batch storage of {len(memories)} memories")
+#     The tool will report progress as it processes the memories.
+#     """
+#     if ctx:
+#         user_id = get_user_id_from_context(ctx)
+#         await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Starting batch storage of {len(memories)} memories")
     
-    session_maker = get_async_sessionmaker()
-    async with session_maker() as db:
-        try:
-            # Get user_id from context
-            user_id = get_user_id_from_context(ctx)
-            result = await memory_manager.store_batch(memories, db, user_id, ctx)
-            await db.commit()
+#     session_maker = get_async_sessionmaker()
+#     async with session_maker() as db:
+#         try:
+#             # Get user_id from context
+#             user_id = get_user_id_from_context(ctx)
+#             result = await memory_manager.store_batch(memories, db, user_id, ctx)
+#             await db.commit()
             
-            if ctx:
-                await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Batch storage completed: {result}")
+#             if ctx:
+#                 await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Batch storage completed: {result}")
             
-            return result
-        except Exception as e:
-            await db.rollback()
+#             return result
+#         except Exception as e:
+#             await db.rollback()
             
-            if ctx:
-                await ctx.error(f"[User: {user_id}, Request: {ctx.request_id}] Batch storage failed: {str(e)}")
+#             if ctx:
+#                 await ctx.error(f"[User: {user_id}, Request: {ctx.request_id}] Batch storage failed: {str(e)}")
             
-            raise e
+#             raise e
 
 
 @mcp.custom_route("/health", methods=["GET"])

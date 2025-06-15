@@ -99,6 +99,9 @@ services:
     container_name: memory-mcp-postgres
     restart: unless-stopped
     
+    # Port mapping for external access
+    ports:
+      - "${DB_PORT:-5432}:5432"
     
     # Environment variables
     environment:
