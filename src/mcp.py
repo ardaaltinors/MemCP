@@ -16,7 +16,17 @@ init_db()
 
 mcp = FastMCP(
     name="Memory MCP Server",
-    instructions="Use these tools to remember and retrieve memories. If a user asks you to remember something, use the remember_fact tool. If a user asks you to retrieve a memory, use the get_related_memory tool. If a user asks you to remove a memory, or you think it is outdated, use the remove_memory tool. You MUST call the record_and_get_context tool every single time the user sends a message, regardless of its importance.",
+    instructions="""Use these tools to remember and retrieve memories. 
+    
+IMPORTANT: When calling tools, ensure parameters are in the correct format:
+- For tags parameter: Provide as a proper list, not a JSON string. Example: tags=["programming", "nestjs"]
+- For all text parameters: Provide as plain strings
+
+Key behaviors:
+1. If a user asks you to remember something, use the remember_fact tool
+2. If a user asks you to retrieve a memory, use the get_related_memory tool  
+3. If a user asks you to remove a memory, or you think it is outdated, use the remove_memory tool
+4. You MUST call the record_and_get_context tool every single time the user sends a message, regardless of its importance""",
     tags={"memory", "memcp", "memorize", "remember"}
 )
 memory_manager = MemoryManager()
@@ -33,8 +43,8 @@ async def remember_fact(
     tags: Optional[List[str]] = Field(
         default=None, 
         description=(
-        'Optional tags to help categorize the memory. Must be provided as a JSON array '
-        '(e.g., ["tag1", "tag2"]). Do not wrap the list in quotes. Maximum of 3 tags allowed.'
+        'Optional tags to help categorize the memory. Provide as a list of strings, '
+        'for example: ["work", "project", "deadline"]. Maximum of 3 tags allowed.'
         ),
         max_length=3
     ),
