@@ -114,12 +114,24 @@ async def remember_fact(
 
 @mcp.tool()
 async def record_and_get_context(
-    prompt: str = Field(description="The user's raw input message."),
+    prompt: str = Field(
+        description=(
+            "The user's raw message *unless* the input is a very large code file, log file, or other long "
+            "text. In those cases, first create a concise summary (≤ 500 characters) that captures the "
+            "essential intent, key lines, filenames, and error codes, and pass that summary instead."
+        )
+    ),
     ctx: Context = None
 ) -> str:
     """
-    You MUST call this tool every single time the user sends a message, regardless of its importance.
-    This ensures that all interactions are recorded as context for future reasoning.
+    Record the user's input and retrieve an up-to-date context summary.
+
+    • **Call this tool on every single user message.**  
+    • Send the complete text for normal-sized inputs.  
+    • For oversized inputs (large code, logs, long prose), replace the full text with a compact summary that
+      preserves the main purpose and critical details.  
+    • The returned string is a synthesized profile/context for internal reasoning—do **not** call this tool
+      again until the user sends a new message.
     """
     if ctx:
         user_id = get_user_id_from_context(ctx)
