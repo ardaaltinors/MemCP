@@ -86,10 +86,6 @@ services:
       - qdrant
       - rabbitmq
       - redis
-    
-    # Networks
-    networks:
-      - memory-mcp-network
 
   # =============================================================================
   # PostgreSQL Database
@@ -124,17 +120,13 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-    
+
     # Logging
     logging:
       driver: "json-file"
       options:
         max-size: "50m"
         max-file: "5"
-    
-    # Networks
-    networks:
-      - memory-mcp-network
 
   # =============================================================================
   # Qdrant Vector Database
@@ -156,17 +148,13 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
-    
+
     # Logging
     logging:
       driver: "json-file"
       options:
         max-size: "50m"
         max-file: "5"
-    
-    # Networks
-    networks:
-      - memory-mcp-network
 
   # =============================================================================
   # RabbitMQ Message Broker
@@ -185,10 +173,7 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
       RABBITMQ_NODENAME: rabbit@rabbitmq
       RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-secretcookie}
-    
-    networks:
-      - memory-mcp-network
-    
+
     # Health check for RabbitMQ
     healthcheck:
       test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping || exit 1"]
@@ -216,10 +201,7 @@ services:
       - redis_data:/data
     
     command: redis-server --save 60 1 --loglevel warning --maxmemory 256mb --maxmemory-policy allkeys-lru --stop-writes-on-bgsave-error no
-    
-    networks:
-      - memory-mcp-network
-    
+
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 15s
@@ -275,10 +257,7 @@ services:
       - rabbitmq
       - redis
       - qdrant
-    
-    networks:
-      - memory-mcp-network
-    
+
     # Health check for Celery worker
     healthcheck:
       test: ["CMD-SHELL", "celery -A src.celery_app inspect ping -d celery@$$HOSTNAME || exit 1"]
@@ -329,18 +308,7 @@ services:
     # Dependencies - wait for backend to be healthy
     depends_on:
       - memory-mcp
-    
-    # Networks
-    networks:
-      - memory-mcp-network
 
-# =============================================================================
-# Networks
-# =============================================================================
-networks:
-  memory-mcp-network:
-    driver: bridge
-    name: memory-mcp-network
 
 # =============================================================================
 # Volumes
