@@ -1,4 +1,5 @@
 import React from 'react';
+import { DashboardImage } from '@static/images';
 
 export const LiquidGlassProblemSolution: React.FC = () => {
     return (
@@ -652,7 +653,7 @@ export const LiquidGlassDashboard: React.FC = () => {
                         </div>
                         <div className="dashboard-image-container">
                             <img
-                                src="/src/static/images/memcp-dashboard.png"
+                                src={DashboardImage.src}
                                 alt="MemCP Dashboard showing memory graph visualization"
                                 className="dashboard-image"
                                 loading="lazy"

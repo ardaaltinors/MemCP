@@ -2,11 +2,13 @@ import { type FC } from "react";
 import PreviewPng from "./preview.webp";
 import mindmap from "./mindmap.webp";
 import Logo from "./logo.webp";
+import DashboardImage from "./memcp-dashboard.png";
 
 export const images = {
     preview: PreviewPng,
     mindmap: mindmap,
     logo: Logo,
+    dashboard: DashboardImage,
 };
 
 export type ImageProps = React.ImgHTMLAttributes<HTMLElement> & {
@@ -56,4 +58,4 @@ export const Image: FC<ImageProps> = ({
 };
 
 // default export of the images
-export { PreviewPng, mindmap, Logo };
+export { PreviewPng, mindmap, Logo, DashboardImage };
