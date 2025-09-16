@@ -3,7 +3,7 @@ import Layout from "layouts/Layout.astro";
 import LiquidGlassHeader from "@libs/ui/components/LiquidGlassHeader.astro";
 import LiquidGlassFooter from "@libs/ui/components/LiquidGlassFooter.astro";
 import { LiquidGlassHero } from "@libs/ui/blocks/LiquidGlassHero";
-import { LiquidGlassProblemSolution, LiquidGlassHowItWorks, LiquidGlassFeatures, LiquidGlassGetStarted } from "@libs/ui/blocks/LiquidGlass";
+import { LiquidGlassProblemSolution, LiquidGlassHowItWorks, LiquidGlassFeatures, LiquidGlassDashboard, LiquidGlassGetStarted } from "@libs/ui/blocks/LiquidGlass";
 ---
 
 <!doctype html>
@@ -202,6 +202,7 @@ import { LiquidGlassProblemSolution, LiquidGlassHowItWorks, LiquidGlassFeatures,
                 <LiquidGlassProblemSolution client:visible />
                 <LiquidGlassHowItWorks client:visible />
                 <LiquidGlassFeatures client:visible />
+                <LiquidGlassDashboard client:visible />
                 <LiquidGlassGetStarted client:visible />
             </main>
             <LiquidGlassFooter />

@@ -627,6 +627,234 @@ export const LiquidGlassFeatures: React.FC = () => {
     );
 };
 
+export const LiquidGlassDashboard: React.FC = () => {
+    return (
+        <section id="dashboard-preview" className="liquid-glass-section dashboard-preview">
+            <div className="section-container">
+                <div className="section-header">
+                    <h2 className="section-title">
+                        <span className="title-gradient">See It In Action</span>
+                    </h2>
+                    <p className="section-subtitle">
+                        Explore your AI memories through an intuitive visual interface
+                    </p>
+                </div>
+
+                <div className="dashboard-wrapper">
+                    <div className="dashboard-container liquid-glass layer-2">
+                        <div className="dashboard-header">
+                            <div className="browser-dots">
+                                <span className="browser-dot red"></span>
+                                <span className="browser-dot yellow"></span>
+                                <span className="browser-dot green"></span>
+                            </div>
+                            <div className="browser-title">MemCP Dashboard</div>
+                        </div>
+                        <div className="dashboard-image-container">
+                            <img
+                                src="/src/static/images/memcp-dashboard.png"
+                                alt="MemCP Dashboard showing memory graph visualization"
+                                className="dashboard-image"
+                                loading="lazy"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="dashboard-features">
+                        <div className="dashboard-feature liquid-glass">
+                            <svg className="feature-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                            <span>Interactive memory graph exploration</span>
+                        </div>
+                        <div className="dashboard-feature liquid-glass">
+                            <svg className="feature-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                            <span>Real-time memory connections</span>
+                        </div>
+                        <div className="dashboard-feature liquid-glass">
+                            <svg className="feature-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                            <span>Semantic clustering of related memories</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <style>{`
+                .dashboard-preview {
+                    background: linear-gradient(180deg, transparent 0%, rgba(186, 64, 255, 0.05) 100%);
+                }
+
+                .dashboard-wrapper {
+                    margin-top: 60px;
+                }
+
+                .dashboard-container {
+                    max-width: 1000px;
+                    margin: 0 auto 48px;
+                    background: rgba(255, 255, 255, 0.25);
+                    box-shadow: 0 16px 48px 0 rgba(31, 38, 135, 0.37);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
+                    border-radius: 24px;
+                    border: 1px solid rgba(255, 255, 255, 0.18);
+                    overflow: hidden;
+                    animation: fadeInUp 1s ease-out;
+                    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                }
+
+                .dashboard-container:hover {
+                    transform: translateY(-8px) scale(1.01);
+                    box-shadow: 0 24px 64px 0 rgba(31, 38, 135, 0.45);
+                }
+
+                .dashboard-header {
+                    display: flex;
+                    align-items: center;
+                    padding: 16px 24px;
+                    background: rgba(255, 255, 255, 0.1);
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                }
+
+                .browser-dots {
+                    display: flex;
+                    gap: 8px;
+                    margin-right: 16px;
+                }
+
+                .browser-dot {
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 50%;
+                    opacity: 0.8;
+                }
+
+                .browser-dot.red {
+                    background: #ff5f56;
+                }
+
+                .browser-dot.yellow {
+                    background: #ffbd2e;
+                }
+
+                .browser-dot.green {
+                    background: #27c93f;
+                }
+
+                .browser-title {
+                    font-size: 14px;
+                    color: #6e6e73;
+                    font-weight: 500;
+                }
+
+                @media (prefers-color-scheme: dark) {
+                    .browser-title {
+                        color: #86868b;
+                    }
+                }
+
+                .dashboard-image-container {
+                    position: relative;
+                    width: 100%;
+                    overflow: hidden;
+                    background: rgba(0, 0, 0, 0.02);
+                }
+
+                @media (prefers-color-scheme: dark) {
+                    .dashboard-image-container {
+                        background: rgba(0, 0, 0, 0.2);
+                    }
+                }
+
+                .dashboard-image {
+                    width: 100%;
+                    height: auto;
+                    display: block;
+                    transition: transform 0.3s ease;
+                }
+
+                .dashboard-container:hover .dashboard-image {
+                    transform: scale(1.02);
+                }
+
+                .dashboard-features {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 20px;
+                    justify-content: center;
+                    max-width: 800px;
+                    margin: 0 auto;
+                }
+
+                .dashboard-feature {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 12px 24px;
+                    background: rgba(255, 255, 255, 0.25);
+                    box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.3);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
+                    border: 1px solid rgba(255, 255, 255, 0.18);
+                    border-radius: 100px;
+                    font-size: 15px;
+                    color: #1d1d1f;
+                    animation: fadeInUp 0.8s ease-out;
+                    animation-fill-mode: both;
+                    transition: all 0.3s ease;
+                }
+
+                @media (prefers-color-scheme: dark) {
+                    .dashboard-feature {
+                        color: #f5f5f7;
+                    }
+                }
+
+                .dashboard-feature:nth-child(1) {
+                    animation-delay: 0.1s;
+                }
+
+                .dashboard-feature:nth-child(2) {
+                    animation-delay: 0.2s;
+                }
+
+                .dashboard-feature:nth-child(3) {
+                    animation-delay: 0.3s;
+                }
+
+                .dashboard-feature:hover {
+                    transform: scale(1.05);
+                    background: rgba(64, 156, 255, 0.2);
+                }
+
+                .feature-check {
+                    color: #27c93f;
+                    flex-shrink: 0;
+                }
+
+                @media (max-width: 768px) {
+                    .dashboard-container {
+                        margin: 0 20px 40px;
+                    }
+
+                    .dashboard-features {
+                        flex-direction: column;
+                        align-items: stretch;
+                        padding: 0 20px;
+                    }
+
+                    .dashboard-feature {
+                        justify-content: flex-start;
+                    }
+                }
+            `}</style>
+        </section>
+    );
+};
+
 export const LiquidGlassGetStarted: React.FC = () => {
     return (
         <section id="get-started" className="liquid-glass-section get-started">
