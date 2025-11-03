@@ -1,13 +1,9 @@
----
 <div align="center">
-  <h1>🚧 <span style="color:#ffd700">MemCP</span> — *Work in Progress*</h1>
-  <p><i>Next-gen portable memory for AI assistants. Join the journey!</i></p>
+  <h1>MemCP - Portable Memory for AI</h1>
+  <p><i>Give your AI assistant long-term memory that persists across conversations and platforms</i></p>
 </div>
+
 ---
-
-# 🚧🚧🚧 MemCP — Work In Progress 🚧🚧🚧
-
-# MemCP - Portable Memory for AI
 
 A powerful memory management system for AI assistants that implements the Model Context Protocol (MCP), enabling persistent context and knowledge across conversations and different AI providers.
 
@@ -31,41 +27,24 @@ Memory MCP Server solves a fundamental limitation of AI assistants - the inabili
 3. **Intelligent Retrieval**: The AI queries relevant memories to provide contextual responses
 4. **Visual Management**: Use the web dashboard to view, edit, and organize your memories
 
-# Quick Start with Cloud 
+## Quick Start
 
-We provide a easy to use MCP endpoint with hosted version.
+### Cloud-Hosted Version (Recommended)
 
-## Self Hosted Version
+Get started immediately with our hosted MCP server:
 
-### Using Docker (Recommended)
+**🌐 Production URL**: https://mcp.altinors.com/
 
-```bash
-# Clone the repository
-git clone https://github.com/ardaaltinors/memory-mcp.git
-cd memory-mcp
+1. Sign up for an account at the web interface
+2. Get your API key from the dashboard
+3. Configure your AI assistant to use the MCP endpoint
+4. Start chatting with persistent memory
 
-# Start all services
-docker-compose up
+### Run Locally
 
-# Access the services:
-# - Web Interface: http://localhost
-# - API: http://localhost:8000
-# - MCP Server: http://localhost:4200
-```
+Want to run MemCP on your own machine? It's easy!
 
-### Manual Installation
-
-```bash
-# Backend setup
-uv install
-alembic upgrade head
-uv run python main.py
-
-# Frontend setup
-cd frontend
-npm install
-npm run dev
-```
+- For detailed setup instructions, development tips, and troubleshooting, see [RUNNING_LOCALLY.md](docs/RUNNING_LOCALLY.md).
 
 ## MCP Tools Available
 
@@ -85,11 +64,13 @@ The server provides three core tools for AI assistants:
 
 ## Configuration
 
-1. Create a `.env` file with required environment variables (see `.env.example`)
-2. Configure your AI assistant to connect to the MCP server at `http://localhost:4200`
-3. Use the API key from your user dashboard for authentication
+Configure your AI assistant to connect to the MCP server:
+- **Cloud**: https://mcp.altinors.com/
+- **Local**: http://localhost:4200
 
-## Use Cases
+Use the API key from your dashboard for authentication. For local setup configuration details, see [RUNNING_LOCALLY.md](docs/RUNNING_LOCALLY.md).
+
+## Use Casesn
 
 - **Personal AI Assistant**: Give your AI assistant long-term memory about your preferences and history
 - **Customer Support**: Maintain context across multiple support interactions
@@ -98,11 +79,17 @@ The server provides three core tools for AI assistants:
 
 ## Contributing
 
-We welcome contributions! Please see our contributing guidelines for more information.
+We welcome contributions! Whether it's bug fixes, new features, or documentation improvements, feel free to:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
 
 ## License
 
-
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 

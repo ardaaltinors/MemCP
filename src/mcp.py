@@ -124,7 +124,7 @@ async def record_and_get_context(
     ctx: Context = None
 ) -> str:
     """
-    Record the user's input and retrieve an up-to-date context summary.
+    Record the user's input and retrieve an up-to-date context summary. ALWAYS CALL THIS TOOL ON EVERY SINGLE USER MESSAGE.
 
     • **Call this tool on every single user message.**  
     • Send the complete text for normal-sized inputs.  

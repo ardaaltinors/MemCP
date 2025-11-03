@@ -1,6 +1,9 @@
 import os
+from dotenv import load_dotenv
 from celery import Celery
 from src.exceptions import ConfigurationError
+
+load_dotenv()
 
 # Get broker URL from environment variables
 broker_url = os.getenv("CELERY_BROKER_URL")
