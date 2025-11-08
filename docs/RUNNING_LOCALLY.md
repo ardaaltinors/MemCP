@@ -52,7 +52,7 @@ This starts two servers:
 In another terminal, start the Celery worker for background tasks:
 
 ```bash
-uv run celery -A src.celery_app worker --loglevel=info
+uv run celery -A src.celery_app worker --loglevel=info --pool=solo
 ```
 
 ## Running the Frontend

@@ -12,7 +12,7 @@ dependencies = [
     "celery[redis]>=5.5.3",
     "email-validator>=2.2.0",
     "fastapi>=0.115.12",
-    "fastmcp>=2.3.4",
+    "fastmcp==2.13.0.2",
     "greenlet>=3.2.2",
     "langchain>=0.3.25",
     "langchain-google-genai>=2.1.5",

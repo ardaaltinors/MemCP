@@ -3,7 +3,7 @@ Test to verify user context isolation in MCP tools.
 """
 import uuid
 import asyncio
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import Mock, AsyncMock, patch
 from fastmcp import Context
 from src.utils.mcp_context import get_user_id_from_context
 from src.exceptions import AuthenticationError
@@ -11,20 +11,19 @@ from src.exceptions import AuthenticationError
 
 def test_user_context_extraction():
     """Test that user_id is correctly extracted from context."""
-    # Create mock context
+    # Create mock context (not used by dependency but required by helper)
     ctx = Mock(spec=Context)
-    
+
     # Create mock request with user
     mock_request = Mock()
     mock_user = Mock()
     mock_user.id = uuid.uuid4()
     mock_request.state.user = mock_user
-    
-    # Mock get_http_request to return our mock request
-    ctx.get_http_request.return_value = mock_request
-    
-    # Extract user_id
-    extracted_user_id = get_user_id_from_context(ctx)
+
+    # Patch dependency to return our mock request
+    with patch("src.utils.mcp_context.get_http_request", return_value=mock_request):
+        # Extract user_id
+        extracted_user_id = get_user_id_from_context(ctx)
     
     # Verify correct user_id was extracted
     assert extracted_user_id == mock_user.id
@@ -45,14 +44,14 @@ def test_no_request_raises_error():
     """Test that missing request raises appropriate error."""
     # Create mock context without request
     ctx = Mock(spec=Context)
-    ctx.get_http_request.return_value = None
-    
-    try:
-        get_user_id_from_context(ctx)
-        assert False, "Should have raised AuthenticationError"
-    except AuthenticationError as e:
-        assert "No HTTP request found" in str(e)
-        print("✓ Correctly raised error for missing request")
+
+    with patch("src.utils.mcp_context.get_http_request", return_value=None):
+        try:
+            get_user_id_from_context(ctx)
+            assert False, "Should have raised AuthenticationError"
+        except AuthenticationError as e:
+            assert "No HTTP request found" in str(e)
+            print("✓ Correctly raised error for missing request")
 
 
 def test_no_user_raises_error():
@@ -61,14 +60,14 @@ def test_no_user_raises_error():
     ctx = Mock(spec=Context)
     mock_request = Mock()
     mock_request.state = Mock(spec=[])  # No user attribute
-    ctx.get_http_request.return_value = mock_request
-    
-    try:
-        get_user_id_from_context(ctx)
-        assert False, "Should have raised AuthenticationError"
-    except AuthenticationError as e:
-        assert "No authenticated user found" in str(e)
-        print("✓ Correctly raised error for missing user")
+
+    with patch("src.utils.mcp_context.get_http_request", return_value=mock_request):
+        try:
+            get_user_id_from_context(ctx)
+            assert False, "Should have raised AuthenticationError"
+        except AuthenticationError as e:
+            assert "No authenticated user found" in str(e)
+            print("✓ Correctly raised error for missing user")
 
 
 async def test_concurrent_user_isolation():
@@ -82,13 +81,13 @@ async def test_concurrent_user_isolation():
         mock_user = Mock()
         mock_user.id = user_id
         mock_request.state.user = mock_user
-        ctx.get_http_request.return_value = mock_request
-        
+
         # Small delay to simulate processing
         await asyncio.sleep(0.01)
-        
-        # Extract and return the user_id
-        return get_user_id_from_context(ctx)
+
+        # Extract and return the user_id with dependency patched per-call
+        with patch("src.utils.mcp_context.get_http_request", return_value=mock_request):
+            return get_user_id_from_context(ctx)
     
     # Create multiple user IDs
     user_ids = [uuid.uuid4() for _ in range(5)]

@@ -7,7 +7,7 @@ from starlette.middleware import Middleware
 from src.memory_manager import MemoryManager
 from src.db import init_db
 from src.db.database import get_async_sessionmaker
-from src.middlewares import UserCredentialMiddleware
+from src.middlewares import MCPPathAuthMiddleware
 from src.utils.mcp_context import get_user_id_from_context
 from src.utils.tag_parser import parse_tags_input
 import logging
@@ -31,7 +31,6 @@ Key behaviors:
 2. If a user asks you to retrieve a memory, use the get_related_memory tool  
 3. If a user asks you to remove a memory, or you think it is outdated, use the remove_memory tool
 4. You MUST call the record_and_get_context tool every single time the user sends a message, regardless of its importance""",
-    tags={"memory", "memcp", "memorize", "remember"}
 )
 memory_manager = MemoryManager()
 
@@ -277,6 +276,6 @@ async def health_check(_: Request) -> PlainTextResponse:
 mcp_app = mcp.http_app(
     path="/mcp",
     middleware=[
-        Middleware(UserCredentialMiddleware)
+        Middleware(MCPPathAuthMiddleware)
     ]
 )

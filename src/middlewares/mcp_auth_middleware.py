@@ -5,14 +5,27 @@ from starlette.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from src.db.database import get_async_sessionmaker
 from src.crud.crud_user import get_user_by_api_key
-# Removed set_current_user_id import - no longer using global context
 from src.exceptions import InvalidAPIKeyError, InactiveUserError
 from src.exceptions.handlers import ExceptionHandler
 
-# Configure logger for middleware
+
 logger = logging.getLogger(__name__)
 
 class UserCredentialMiddleware(BaseHTTPMiddleware):
+    """
+    DEPRECATED: This middleware is deprecated in favor of MCPPathAuthMiddleware.
+
+    This middleware only supports path-based authentication (/mcp/{api_key}/...)
+    and does not properly rewrite paths for FastMCP 2.13 compatibility.
+
+    Use MCPPathAuthMiddleware instead, which:
+    - Supports both header-based (Authorization: Bearer) and path-based auth
+    - Properly rewrites paths for FastMCP route matching
+    - Uses modern ASGI middleware pattern
+
+    This class is retained for reference only and should not be used in new code.
+    See: src/middlewares/mcp_path_auth_middleware.py
+    """
     def __init__(self, app):
         super().__init__(app)
         self.debug = os.getenv("DEBUG", "false").lower() == "true"
