@@ -6,7 +6,8 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from src.db.database import get_async_sessionmaker
-from src.crud.crud_user import get_user_by_api_key
+from src.crud.crud_user import get_user_by_api_key, get_user_by_username
+from src.core import security
 from src.exceptions import InvalidAPIKeyError, InactiveUserError
 from src.exceptions.handlers import ExceptionHandler
 
@@ -33,11 +34,20 @@ class MCPPathAuthMiddleware:
         path: str = scope.get("path", "")
         headers = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
 
-        # Extract API key from Authorization header
+        # Extract credentials from Authorization header
         api_key = None
+        jwt_token = None
         auth_header = headers.get("authorization")
         if auth_header and auth_header.lower().startswith("bearer "):
-            api_key = auth_header.split(" ", 1)[1].strip()
+            bearer = auth_header.split(" ", 1)[1].strip()
+            token_data = security.decode_token(bearer)
+            if token_data and token_data.sub:
+                jwt_token = bearer
+            else:
+                api_key = bearer
+        # Also support X-API-Key header
+        if not api_key and not jwt_token and headers.get("x-api-key"):
+            api_key = headers.get("x-api-key")
 
         # Legacy path-based auth: /mcp/{api_key}/...
         if path.startswith("/mcp/"):
@@ -54,7 +64,22 @@ class MCPPathAuthMiddleware:
                     scope["path"] = new_path
                     scope["raw_path"] = new_path.encode()
 
-        if api_key:
+        if jwt_token:
+            token_data = security.decode_token(jwt_token)
+            if token_data and token_data.sub:
+                session_maker = get_async_sessionmaker()
+                async with session_maker() as db:
+                    user = await get_user_by_username(db, username=token_data.sub)
+                    if user:
+                        if user.is_active:
+                            scope.setdefault("state", {})
+                            scope["state"]["user"] = user
+                        else:
+                            exception = InactiveUserError(user_id=str(user.id), username=user.username)
+                            response = ExceptionHandler.to_json_response(exception)
+                            return await response(scope, receive, send)
+            # if token invalid, fall through to next checks
+        elif api_key:
             session_maker = get_async_sessionmaker()
             async with session_maker() as db:
                 user = await get_user_by_api_key(db, api_key)
@@ -84,4 +109,3 @@ class MCPPathAuthMiddleware:
                     return await response(scope, receive, send)
 
         return await self.app(scope, receive, send)
-

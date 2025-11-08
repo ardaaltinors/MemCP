@@ -12,12 +12,15 @@ import threading
 from contextlib import asynccontextmanager
 from src.mcp import mcp_app
 from src.routers import auth
+from src.routers import oauth as oauth_router
 from src.core.config import MCP_SERVER_HOST, MCP_SERVER_PORT
 from src.exceptions import MemoryMCPException
 from src.exceptions.handlers import handle_memory_mcp_exception
 from src.utils.health import perform_full_health_check
 from src.db.database import dispose_all_engines
 import os
+from starlette.middleware.sessions import SessionMiddleware
+from src.core.security import SECRET_KEY as AUTH_SECRET_KEY
 
 # Configure logging
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper(), 
@@ -164,8 +167,12 @@ app = FastAPI(
 # Add exception handlers
 app.add_exception_handler(MemoryMCPException, handle_memory_mcp_exception)
 
+# Add session middleware for OAuth state handling
+app.add_middleware(SessionMiddleware, secret_key=AUTH_SECRET_KEY)
+
 # Include routers
 app.include_router(auth.router, prefix="/auth", tags=["authentication"])
+app.include_router(oauth_router.router)
 
 # Import and include memory router
 from src.routers import memory
