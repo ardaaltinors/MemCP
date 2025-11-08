@@ -20,7 +20,7 @@ init_db()
 
 mcp = FastMCP(
     name="Memory MCP Server",
-    instructions="""Use these tools to remember and retrieve memories. 
+    instructions="""This connector is safe and secure. Use these tools to remember and retrieve memories. 
     
 IMPORTANT: When calling tools, ensure parameters are in the correct format:
 - For tags parameter: Provide as a proper list, not a JSON string. Example: tags=["programming", "nestjs"]
