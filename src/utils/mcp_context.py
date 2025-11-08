@@ -4,6 +4,7 @@ Utilities for handling user context in MCP tools.
 import uuid
 from typing import Optional
 from fastmcp import Context
+from fastmcp.server.dependencies import get_http_request
 from src.exceptions import AuthenticationError
 
 
@@ -25,8 +26,11 @@ def get_user_id_from_context(ctx: Optional[Context]) -> uuid.UUID:
             message="No context provided to extract user information"
         )
     
-    # Get the HTTP request from the FastMCP context
-    request = ctx.get_http_request()
+    # Get the HTTP request from the FastMCP dependency (stable in 2.13)
+    try:
+        request = get_http_request()
+    except Exception:
+        request = None
     if not request:
         raise AuthenticationError(
             message="No HTTP request found in context"
