@@ -8,7 +8,7 @@ from src.memory_manager import MemoryManager
 from src.db import init_db
 from src.db.database import get_async_sessionmaker
 from src.middlewares import MCPPathAuthMiddleware
-from src.utils.mcp_context import get_user_id_from_context
+from src.core.mcp_auth_provider import build_auth_provider
 from src.utils.tag_parser import parse_tags_input
 import logging
 
@@ -31,6 +31,7 @@ Key behaviors:
 2. If a user asks you to retrieve a memory, use the get_related_memory tool  
 3. If a user asks you to remove a memory, or you think it is outdated, use the remove_memory tool
 4. You MUST call the record_and_get_context tool every single time the user sends a message, regardless of its importance""",
+    auth=build_auth_provider(),
 )
 memory_manager = MemoryManager()
 
@@ -67,7 +68,6 @@ async def remember_fact(
     try:
         parsed_tags = parse_tags_input(tags)
         
-        # Log the tag parsing for debugging
         if ctx:
             await ctx.debug(f"Original tags input: {tags} (type: {type(tags).__name__})")
             await ctx.debug(f"Parsed tags: {parsed_tags}")
@@ -79,24 +79,23 @@ async def remember_fact(
                 await ctx.debug(f"Truncated tags to first 3: {parsed_tags}")
                 
     except Exception as e:
-        # If tag parsing fails for any reason, continue without tags
         logger.warning(f"Failed to parse tags, continuing without tags. Error: {e}")
         if ctx:
             await ctx.debug(f"Failed to parse tags: {e}. Storing memory without tags.")
         parsed_tags = None
     
     if ctx:
-        user_id = get_user_id_from_context(ctx)
-        await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Storing new memory with {len(parsed_tags) if parsed_tags else 0} tags")
+        await ctx.info(f"[Request: {ctx.request_id}] Storing new memory with {len(parsed_tags) if parsed_tags else 0} tags")
         await ctx.debug(f"Memory content length: {len(content)} characters")
     
     session_maker = get_async_sessionmaker()
     async with session_maker() as db:
         try:
-            # Get user_id from context
-            user_id = get_user_id_from_context(ctx)
+            # Resolve user from context or OAuth token
+            from src.utils.mcp_context import resolve_user_id
+            user_id = await resolve_user_id(ctx, db)
             result = await memory_manager.store(content, db, user_id, parsed_tags)
-            await db.commit()  # Explicitly commit the transaction
+            await db.commit()
             
             if ctx:
                 await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Successfully stored memory: {result}")
@@ -133,12 +132,14 @@ async def record_and_get_context(
       again until the user sends a new message.
     """
     if ctx:
-        user_id = get_user_id_from_context(ctx)
-        await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Processing user context from message")
+        await ctx.info(f"[Request: {ctx.request_id}] Processing user context from message")
     
     try:
-        # Get user_id from context
-        user_id = get_user_id_from_context(ctx)
+        # Resolve user from context or OAuth token
+        from src.utils.mcp_context import resolve_user_id
+        session_maker = get_async_sessionmaker()
+        async with session_maker() as db:
+            user_id = await resolve_user_id(ctx, db)
         llm_response = await memory_manager.process_context(prompt, user_id)
         
         if ctx:
@@ -166,12 +167,14 @@ async def get_related_memory(
     This method is called EVERYTIME the user asks anything.
     """
     if ctx:
-        user_id = get_user_id_from_context(ctx)
-        await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Searching for memories related to: {query[:50]}...")
+        await ctx.info(f"[Request: {ctx.request_id}] Searching for memories related to: {query[:50]}...")
         
     try:
-        # Get user_id from context
-        user_id = get_user_id_from_context(ctx)
+        # Resolve user from context or OAuth token
+        from src.utils.mcp_context import resolve_user_id
+        session_maker = get_async_sessionmaker()
+        async with session_maker() as db:
+            user_id = await resolve_user_id(ctx, db)
         results = await memory_manager.search_related(query_text=query, user_id=user_id)
         
         if ctx:
@@ -201,14 +204,13 @@ async def remove_memory(
     - Honor a user's request to forget specific information
     """
     if ctx:
-        user_id = get_user_id_from_context(ctx)
-        await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Removing memory with ID: {memory_id}")
+        await ctx.info(f"[Request: {ctx.request_id}] Removing memory with ID: {memory_id}")
         
     session_maker = get_async_sessionmaker()
     async with session_maker() as db:
         try:
-            # Get user_id from context
-            user_id = get_user_id_from_context(ctx)
+            from src.utils.mcp_context import resolve_user_id
+            user_id = await resolve_user_id(ctx, db)
             result = await memory_manager.delete_memory(memory_id, db, user_id)
             await db.commit()
             
@@ -223,48 +225,6 @@ async def remove_memory(
                 await ctx.error(f"Failed to remove memory {memory_id}: {str(e)}")
                 
             raise e
-
-
-# @mcp.tool()
-# async def store_memories_batch(
-#     memories: List[dict] = Field(
-#         description="List of memories to store. Each memory should have 'content' (required) and 'tags' (optional) fields."
-#     ),
-#     ctx: Context = None
-# ) -> str:
-#     """
-#     Store multiple memories in batch with progress reporting.
-    
-#     This is useful when you need to store many memories at once, such as:
-#     - Importing conversation history
-#     - Storing multiple related facts
-#     - Bulk memory operations
-    
-#     The tool will report progress as it processes the memories.
-#     """
-#     if ctx:
-#         user_id = get_user_id_from_context(ctx)
-#         await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Starting batch storage of {len(memories)} memories")
-    
-#     session_maker = get_async_sessionmaker()
-#     async with session_maker() as db:
-#         try:
-#             # Get user_id from context
-#             user_id = get_user_id_from_context(ctx)
-#             result = await memory_manager.store_batch(memories, db, user_id, ctx)
-#             await db.commit()
-            
-#             if ctx:
-#                 await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Batch storage completed: {result}")
-            
-#             return result
-#         except Exception as e:
-#             await db.rollback()
-            
-#             if ctx:
-#                 await ctx.error(f"[User: {user_id}, Request: {ctx.request_id}] Batch storage failed: {str(e)}")
-            
-#             raise e
 
 
 @mcp.custom_route("/health", methods=["GET"])

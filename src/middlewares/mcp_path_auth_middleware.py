@@ -8,6 +8,9 @@ from starlette.responses import JSONResponse
 from src.db.database import get_async_sessionmaker
 from src.crud.crud_user import get_user_by_api_key, get_user_by_username
 from src.core import security
+from starlette.authentication import AuthCredentials
+from mcp.server.auth.provider import AccessToken as SDKAccessToken
+from mcp.server.auth.middleware.bearer_auth import AuthenticatedUser
 from src.exceptions import InvalidAPIKeyError, InactiveUserError
 from src.exceptions.handlers import ExceptionHandler
 
@@ -40,11 +43,18 @@ class MCPPathAuthMiddleware:
         auth_header = headers.get("authorization")
         if auth_header and auth_header.lower().startswith("bearer "):
             bearer = auth_header.split(" ", 1)[1].strip()
+            # First, try to decode as our own JWT
             token_data = security.decode_token(bearer)
             if token_data and token_data.sub:
                 jwt_token = bearer
             else:
-                api_key = bearer
+                # If it looks like a JWT (contains at least 2 dots), assume FastMCP OAuth token
+                # and do NOT treat it as an API key. Let FastMCP auth handle it downstream.
+                if bearer.count('.') >= 2:
+                    pass  # leave both jwt_token and api_key as None
+                else:
+                    # Legacy behavior: allow API key in Bearer header
+                    api_key = bearer
         # Also support X-API-Key header
         if not api_key and not jwt_token and headers.get("x-api-key"):
             api_key = headers.get("x-api-key")
@@ -91,6 +101,15 @@ class MCPPathAuthMiddleware:
                             )
                         scope.setdefault("state", {})
                         scope["state"]["user"] = user
+                        # bypass FastMCP's RequireAuthMiddleware by providing a synthetic authenticated user
+                        access = SDKAccessToken(
+                            token=api_key,
+                            client_id=str(user.id),
+                            scopes=["user"],
+                            expires_at=None,
+                        )
+                        scope["user"] = AuthenticatedUser(access)
+                        scope["auth"] = AuthCredentials(["user"])
                     else:
                         if self.debug:
                             logger.warning(
