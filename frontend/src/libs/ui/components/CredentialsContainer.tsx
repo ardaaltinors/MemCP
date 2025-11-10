@@ -3,40 +3,82 @@ import { getApiKey, createApiKey, revokeApiKey } from '@libs/api';
 import type { ApiKeyResponse } from '@libs/types';
 import { authUtils } from '@libs/utils/auth';
 
-// MCP Client configuration - dynamic instructions based on connection URL
-const getMcpClients = (connectionUrl: string) => [
+type AuthMethod = 'oauth' | 'apikey';
+
+const getBaseMcpUrl = (connectionUrl: string | undefined): string => {
+  if (!connectionUrl) {
+    return 'https://mcp.altinors.com/mcp';
+  }
+
+  const lastSlashIndex = connectionUrl.lastIndexOf('/');
+  if (lastSlashIndex === -1) {
+    return connectionUrl;
+  }
+
+  const possibleKey = connectionUrl.substring(lastSlashIndex + 1);
+  if (possibleKey.startsWith('sk_') || possibleKey.startsWith('SK_')) {
+    return connectionUrl.substring(0, lastSlashIndex);
+  }
+
+  return connectionUrl;
+};
+
+const getMcpClients = (connectionUrl: string, authMethod: AuthMethod, baseMcpUrl: string) => [
   {
     id: 'claude',
     name: 'Anthropic Claude',
     description: 'Claude AI Assistant with advanced reasoning capabilities',
-    instructions: [
-      'Open claude.ai',
-      'Settings → Integrations',
-      'Add Integration',
-      'Integration name: MemCP',
-      `Integration URL: ${connectionUrl || 'Your connection URL'}`
-    ],
+    supportsOAuth: true,
+    instructions: authMethod === 'oauth'
+      ? [
+          'Open claude.ai',
+          'Settings → Integrations',
+          'Add Integration',
+          'Integration name: MemCP',
+          `Integration URL: ${baseMcpUrl}`,
+          'Click "Connect" and sign in with GitHub when prompted'
+        ]
+      : [
+          'Open claude.ai',
+          'Settings → Integrations',
+          'Add Integration',
+          'Integration name: MemCP',
+          `Integration URL: ${connectionUrl || 'Generate an API key first'}`
+        ],
     hasCodeBlock: false
   },
   {
     id: 'cursor',
     name: 'Cursor',
     description: 'AI-powered code editor with MCP support',
-    instructions: [
-      'Cursor → Settings → Cursor Settings',
-      'MCP Tools → Edit → mcp.json',
-      'Add the following configuration:'
-    ],
+    supportsOAuth: true,
+    instructions: authMethod === 'oauth'
+      ? [
+          'Cursor → Settings → Cursor Settings',
+          'MCP Tools → Edit → mcp.json',
+          'Add the configuration below',
+          'Cursor will prompt you to authenticate via browser'
+        ]
+      : [
+          'Cursor → Settings → Cursor Settings',
+          'MCP Tools → Edit → mcp.json',
+          'Add the configuration below'
+        ],
     hasCodeBlock: true,
-    codeBlock: JSON.stringify({
-      "memcp": {
-        "url": connectionUrl || "http://127.0.0.1:4200/mcp/"
-      }
-    }, null, 2)
+    codeBlock: authMethod === 'oauth'
+      ? JSON.stringify({
+          "memcp": {
+            "url": baseMcpUrl
+          }
+        }, null, 2)
+      : JSON.stringify({
+          "memcp": {
+            "url": connectionUrl || "http://127.0.0.1:4200/mcp/"
+          }
+        }, null, 2)
   }
 ];
 
-// Copy to clipboard utility
 const copyToClipboard = async (text: string): Promise<boolean> => {
   try {
     await navigator.clipboard.writeText(text);
@@ -52,9 +94,12 @@ export const CredentialsContainer: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<string>('');
+  const [selectedAuthMethod, setSelectedAuthMethod] = useState<AuthMethod>('oauth');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRevoking, setIsRevoking] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<{ [key: string]: boolean }>({});
+
+  const baseMcpUrl = getBaseMcpUrl(apiKeyData?.connection_url);
 
   const showCopyFeedback = (key: string) => {
     setCopyFeedback(prev => ({ ...prev, [key]: true }));
@@ -70,14 +115,14 @@ export const CredentialsContainer: React.FC = () => {
       const token = authUtils.getToken();
 
       if (!token) {
-        setError('Please log in to view your API keys');
+        setError('Please log in to view your credentials');
         return;
       }
 
       const data = await getApiKey(token);
       setApiKeyData(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch API key');
+      setError(err instanceof Error ? err.message : 'Failed to fetch credentials');
       console.error('Error fetching API key:', err);
     } finally {
       setIsLoading(false);
@@ -96,7 +141,7 @@ export const CredentialsContainer: React.FC = () => {
       }
 
       await createApiKey(token);
-      await fetchApiKey(); // Refresh the data
+      await fetchApiKey();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate API key');
       console.error('Error generating API key:', err);
@@ -117,7 +162,7 @@ export const CredentialsContainer: React.FC = () => {
       }
 
       await revokeApiKey(token);
-      await fetchApiKey(); // Refresh the data
+      await fetchApiKey();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to revoke API key');
       console.error('Error revoking API key:', err);
@@ -126,31 +171,15 @@ export const CredentialsContainer: React.FC = () => {
     }
   };
 
-  const handleCopyConnectionUrl = async () => {
-    if (apiKeyData?.connection_url) {
-      const success = await copyToClipboard(apiKeyData.connection_url);
-      if (success) {
-        showCopyFeedback('connectionUrl');
-      }
-    }
-  };
-
-  const handleCopyClientInfo = async () => {
-    const mcpClients = getMcpClients(apiKeyData?.connection_url || '');
-    const client = mcpClients.find(c => c.id === selectedClient);
-    if (client && apiKeyData?.connection_url) {
-      const clientInfo = `Client: ${client.name}\nConnection URL: ${apiKeyData.connection_url}\nInstructions:\n${client.instructions
-        .map((step, i) => `${i + 1}. ${step}`)
-        .join('\n')}${client.hasCodeBlock ? `\n\nConfiguration:\n${client.codeBlock}` : ''}`;
-      const success = await copyToClipboard(clientInfo);
-      if (success) {
-        showCopyFeedback('clientInfo');
-      }
+  const handleCopyUrl = async (url: string, key: string) => {
+    const success = await copyToClipboard(url);
+    if (success) {
+      showCopyFeedback(key);
     }
   };
 
   const handleCopyCodeBlock = async () => {
-    const mcpClients = getMcpClients(apiKeyData?.connection_url || '');
+    const mcpClients = getMcpClients(apiKeyData?.connection_url || '', selectedAuthMethod, baseMcpUrl);
     const client = mcpClients.find(c => c.id === selectedClient);
     if (client?.codeBlock) {
       const success = await copyToClipboard(client.codeBlock);
@@ -183,14 +212,14 @@ export const CredentialsContainer: React.FC = () => {
       <div className="max-w-7xl mx-auto h-full">
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6 lg:gap-8 min-h-[calc(100vh-5rem)] md:min-h-[calc(100vh-6rem)] lg:min-h-[calc(100vh-8rem)]">
 
-          {/* Left Panel: Your API Keys */}
+          {/* Left Panel: Connection Methods */}
           <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl lg:rounded-2xl p-4 md:p-6 lg:p-8">
             <div className="h-full flex flex-col">
               <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-white mb-6 md:mb-8 flex items-center">
                 <svg className="w-8 h-8 mr-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                Your API Keys
+                Connection Methods
               </h2>
 
               {error && (
@@ -199,102 +228,194 @@ export const CredentialsContainer: React.FC = () => {
                 </div>
               )}
 
-              {apiKeyData?.has_api_key ? (
-                <div className="space-y-4 md:space-y-6 flex-1">
-                  {/* API Key Card */}
-                  <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 md:p-6 space-y-3 md:space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <h3 className="text-base md:text-lg font-medium text-white">API Key</h3>
-                      <span className="text-xs md:text-sm text-gray-400">
-                        Created: {apiKeyData.created_at ? new Date(apiKeyData.created_at).toLocaleDateString() : 'Unknown'}
-                      </span>
+              <div className="space-y-4 md:space-y-6 flex-1">
+                {/* OAuth Method - Recommended */}
+                <div className="bg-gray-800/50 border-2 border-green-500/30 rounded-xl p-4 md:p-6 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg md:text-xl font-semibold text-white">OAuth Authentication</h3>
+                        <span className="px-2.5 py-1 bg-green-500/20 border border-green-500/50 text-green-400 rounded-full text-xs font-semibold">
+                          RECOMMENDED
+                        </span>
+                      </div>
+                      <p className="text-gray-400 text-sm">
+                        Modern, secure authentication. Supported by Cursor, Claude Desktop, and other OAuth-compatible clients.
+                      </p>
                     </div>
-
-                    <div className="flex items-center">
-                      <code className="flex-1 px-2 md:px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-300 font-mono break-all text-xs md:text-sm">
-                        {apiKeyData.api_key || 'SK_••••••••'}
-                      </code>
-                    </div>
-
-                    {/* Connection URL */}
-                    <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
-                      <code className="flex-1 px-2 md:px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-300 font-mono text-xs break-all">
-                        {apiKeyData.connection_url || 'No connection URL available'}
-                      </code>
-                      <button
-                        onClick={handleCopyConnectionUrl}
-                        className="px-3 md:px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 text-blue-400 rounded-lg transition-colors text-xs md:text-sm font-medium shrink-0"
-                      >
-                        {copyFeedback.connectionUrl ? 'Copied!' : 'Copy'}
-                      </button>
-                    </div>
-
-                    <button
-                      onClick={handleRevokeApiKey}
-                      disabled={isRevoking}
-                      className="w-full px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-400 rounded-lg transition-colors text-sm md:text-base font-medium disabled:opacity-50"
-                    >
-                      {isRevoking ? 'Revoking...' : 'Revoke Key'}
-                    </button>
                   </div>
 
-                  {/* Security Warning */}
-                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
-                    <div className="flex items-start space-x-3">
-                      <svg className="w-5 h-5 text-amber-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-2">MCP Server URL</label>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-lg text-gray-300 font-mono text-sm">
+                          {baseMcpUrl}
+                        </code>
+                        <button
+                          onClick={() => handleCopyUrl(baseMcpUrl, 'oauthUrl')}
+                          className="px-4 py-2.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 text-blue-400 rounded-lg transition-colors text-sm font-medium shrink-0"
+                        >
+                          {copyFeedback.oauthUrl ? (
+                            <span className="flex items-center gap-2">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Copied!
+                            </span>
+                          ) : 'Copy'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <svg className="w-5 h-5 text-blue-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="text-sm text-blue-300">
+                          <p className="font-medium mb-1">How it works:</p>
+                          <ol className="list-decimal list-inside space-y-1 text-blue-300/90">
+                            <li>Paste the URL above into your MCP client</li>
+                            <li>Client will open a browser window</li>
+                            <li>Sign in with GitHub to authorize access</li>
+                            <li>Return to your client - you're connected!</li>
+                          </ol>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* API Key Method - Legacy */}
+                <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 md:p-6 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg md:text-xl font-semibold text-white">API Key Authentication</h3>
+                        <span className="px-2.5 py-1 bg-gray-500/20 border border-gray-500/50 text-gray-400 rounded-full text-xs font-semibold">
+                          LEGACY
+                        </span>
+                      </div>
+                      <p className="text-gray-400 text-sm">
+                        For clients that don't support OAuth. Less secure but more compatible.
+                      </p>
+                    </div>
+                  </div>
+
+                  {apiKeyData?.has_api_key ? (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-400 mb-2">API Key</label>
+                        <div className="px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-lg">
+                          <code className="text-gray-300 font-mono text-sm break-all">
+                            {apiKeyData.api_key || 'SK_••••••••'}
+                          </code>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1.5">
+                          Created: {apiKeyData.created_at ? new Date(apiKeyData.created_at).toLocaleDateString() : 'Unknown'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-400 mb-2">Connection URL (with API Key)</label>
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-lg text-gray-300 font-mono text-sm break-all">
+                            {apiKeyData.connection_url || 'No connection URL available'}
+                          </code>
+                          <button
+                            onClick={() => handleCopyUrl(apiKeyData.connection_url || '', 'apiKeyUrl')}
+                            className="px-4 py-2.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 text-blue-400 rounded-lg transition-colors text-sm font-medium shrink-0"
+                          >
+                            {copyFeedback.apiKeyUrl ? (
+                              <span className="flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                Copied!
+                              </span>
+                            ) : 'Copy'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={handleRevokeApiKey}
+                        disabled={isRevoking}
+                        className="w-full px-4 py-2.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-400 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+                      >
+                        {isRevoking ? 'Revoking...' : 'Revoke API Key'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <svg className="w-12 h-12 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                      </svg>
+                      <p className="text-gray-400 text-sm mb-4">No API key generated yet</p>
+                      <button
+                        onClick={handleGenerateApiKey}
+                        disabled={isGenerating}
+                        className="px-6 py-2.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 text-purple-400 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+                      >
+                        {isGenerating ? 'Generating...' : 'Generate API Key'}
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                       </svg>
-                      <p className="text-amber-300 text-sm">
-                        <strong>Security Notice:</strong> Treat your MCP server URL like a password. It can be used to run tools and access your data.
+                      <p className="text-amber-300 text-xs">
+                        <strong>Security Notice:</strong> The connection URL contains your API key. Treat it like a password.
                       </p>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center">
-                  <div className="w-20 h-20 mx-auto mb-6 bg-purple-500/20 rounded-full flex items-center justify-center">
-                    <svg className="w-10 h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1721 9z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-semibold text-white mb-2">No API Key Generated</h3>
-                  <p className="text-gray-400 mb-8">Generate your first API key to start using MCP connections.</p>
-                </div>
-              )}
-
-              {/* Generate New Key Button */}
-              <button
-                onClick={handleGenerateApiKey}
-                disabled={isGenerating}
-                className="w-full group relative overflow-hidden rounded-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
-              >
-                {/* Gradient Border Effect */}
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 opacity-80 blur-sm group-hover:opacity-100 transition-opacity"></div>
-
-                {/* Button Background */}
-                <div className="relative bg-gray-900 rounded-xl border border-gray-700 group-hover:border-transparent transition-colors">
-                  <div className="px-6 py-4 flex items-center justify-center space-x-3">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    <span className="text-white font-medium text-lg">
-                      {isGenerating ? 'Generating...' : 'Generate New Key'}
-                    </span>
-                  </div>
-                </div>
-              </button>
+              </div>
             </div>
           </div>
 
-          {/* Right Panel: MCP Client */}
+          {/* Right Panel: MCP Client Setup */}
           <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl lg:rounded-2xl p-4 md:p-6 lg:p-8">
             <div className="h-full flex flex-col">
               <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-white mb-6 md:mb-8 flex items-center">
                 <svg className="w-6 h-6 md:w-8 md:h-8 mr-2 md:mr-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                MCP Client
+                Client Setup Guide
               </h2>
+
+              {/* Auth Method Selector */}
+              <div className="mb-4 md:mb-6">
+                <label className="block text-xs md:text-sm font-medium text-gray-300 mb-3">Authentication Method</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setSelectedAuthMethod('oauth')}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      selectedAuthMethod === 'oauth'
+                        ? 'border-green-500/50 bg-green-500/10 text-white'
+                        : 'border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="text-sm font-semibold">OAuth</div>
+                    <div className="text-xs mt-1 opacity-75">Recommended</div>
+                  </button>
+                  <button
+                    onClick={() => setSelectedAuthMethod('apikey')}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      selectedAuthMethod === 'apikey'
+                        ? 'border-purple-500/50 bg-purple-500/10 text-white'
+                        : 'border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="text-sm font-semibold">API Key</div>
+                    <div className="text-xs mt-1 opacity-75">Legacy</div>
+                  </button>
+                </div>
+              </div>
 
               {/* Client Selector */}
               <div className="mb-4 md:mb-6">
@@ -305,9 +426,9 @@ export const CredentialsContainer: React.FC = () => {
                   className="w-full p-2 md:p-3 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm md:text-base focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors"
                 >
                   <option value="">Choose a client...</option>
-                  {getMcpClients(apiKeyData?.connection_url || '').map((client) => (
+                  {getMcpClients(apiKeyData?.connection_url || '', selectedAuthMethod, baseMcpUrl).map((client) => (
                     <option key={client.id} value={client.id}>
-                      {client.name}
+                      {client.name} {client.supportsOAuth ? '(Supports OAuth)' : '(API Key only)'}
                     </option>
                   ))}
                 </select>
@@ -316,7 +437,7 @@ export const CredentialsContainer: React.FC = () => {
               {selectedClient && (
                 <div className="space-y-4 md:space-y-6 flex-1">
                   {(() => {
-                    const mcpClients = getMcpClients(apiKeyData?.connection_url || '');
+                    const mcpClients = getMcpClients(apiKeyData?.connection_url || '', selectedAuthMethod, baseMcpUrl);
                     const client = mcpClients.find(c => c.id === selectedClient);
                     return client ? (
                       <>
@@ -346,7 +467,7 @@ export const CredentialsContainer: React.FC = () => {
                           </ol>
                         </div>
 
-                        {/* Code Block for Cursor */}
+                        {/* Code Block */}
                         {client.hasCodeBlock && client.codeBlock && (
                           <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 md:p-6">
                             <div className="flex items-center justify-between mb-3">
@@ -360,7 +481,14 @@ export const CredentialsContainer: React.FC = () => {
                                 onClick={handleCopyCodeBlock}
                                 className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 text-blue-400 rounded-md transition-colors text-xs font-medium"
                               >
-                                {copyFeedback.codeBlock ? 'Copied!' : 'Copy'}
+                                {copyFeedback.codeBlock ? (
+                                  <span className="flex items-center gap-1">
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Copied!
+                                  </span>
+                                ) : 'Copy'}
                               </button>
                             </div>
                             <pre className="bg-gray-900 border border-gray-600 rounded-lg p-4 overflow-x-auto">
@@ -371,10 +499,15 @@ export const CredentialsContainer: React.FC = () => {
                           </div>
                         )}
 
-                        {!apiKeyData?.connection_url && (
-                          <p className="text-xs md:text-sm text-gray-500 text-center">
-                            Generate an API key first to enable client setup
-                          </p>
+                        {selectedAuthMethod === 'apikey' && !apiKeyData?.connection_url && (
+                          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 text-center">
+                            <svg className="w-12 h-12 mx-auto mb-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                            </svg>
+                            <p className="text-yellow-300 text-sm">
+                              Generate an API key first to use this authentication method
+                            </p>
+                          </div>
                         )}
                       </>
                     ) : null;
@@ -390,7 +523,7 @@ export const CredentialsContainer: React.FC = () => {
                     </svg>
                   </div>
                   <h3 className="text-xl font-semibold text-white mb-2">Select an MCP Client</h3>
-                  <p className="text-gray-400">Choose a client to see setup instructions and connection details.</p>
+                  <p className="text-gray-400">Choose a client to see setup instructions based on your selected authentication method.</p>
                 </div>
               )}
             </div>
