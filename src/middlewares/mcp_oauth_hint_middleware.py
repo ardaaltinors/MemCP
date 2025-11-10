@@ -25,11 +25,13 @@ class MCPOAuthHintMiddleware:
         has_auth_header = any(h.lower() == "authorization" for h in headers.keys())
         has_x_api_key = "x-api-key" in headers
 
-        # Hint only on the MCP endpoint root, without any credentials
-        if path == "/mcp" and not has_auth_header and not has_x_api_key:
-            # Compute absolute metadata URL
+        # Hint only on the MCP endpoint root (with or without trailing slash), without any credentials
+        if path in ("/mcp", "/mcp/") and not has_auth_header and not has_x_api_key:
+            # Compute absolute metadata URL - always without trailing slash
+            # FastMCP serves .well-known endpoints without trailing slash
             scheme = (headers.get("x-forwarded-proto") or "http").split(",")[0].strip()
             host = headers.get("host", "localhost:4200")
+            # Always use /mcp (no trailing slash) for metadata URL
             metadata_url = f"{scheme}://{host}/.well-known/oauth-protected-resource/mcp"
 
             # 401 with WWW-Authenticate per RFC specs used by FastMCP clients
