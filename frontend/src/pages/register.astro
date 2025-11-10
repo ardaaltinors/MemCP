@@ -41,11 +41,9 @@ import { RegisterForm } from "@libs/ui/components/RegisterForm";
                   Continue with GitHub
                 </button>
                 <script>
-                  import { env } from "@libs/utils/env";
-
                   document.getElementById("github-oauth-btn")?.addEventListener("click", () => {
                     const cb = `${window.location.origin}/auth/callback`;
-                    window.location.href = `${env.backendUrl}/auth/oauth/github/authorize?redirect_uri=${encodeURIComponent(cb)}`;
+                    window.location.href = `${import.meta.env.PUBLIC_BACKEND_URL}/auth/oauth/github/authorize?redirect_uri=${encodeURIComponent(cb)}`;
                   });
                 </script>
             </div>

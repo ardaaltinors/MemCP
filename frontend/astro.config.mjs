@@ -65,6 +65,7 @@ export default defineConfig({
         define: {
             'import.meta.env.PUBLIC_BACKEND_URL': JSON.stringify(backendUrl),
             'import.meta.env.PUBLIC_FRONTEND_URL': JSON.stringify(siteUrl),
+            'import.meta.env.PUBLIC_MCP_URL': JSON.stringify(mcpUrl),
         }
     },
     buildOptions: {
