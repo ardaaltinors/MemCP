@@ -69,7 +69,12 @@ async def get_or_create_user_for_oauth(
     # If account already linked, return associated user
     account = await get_oauth_account(db, provider=provider, subject=subject)
     if account:
-        return account.user
+        # Avoid async lazy-load; fetch user explicitly
+        result = await db.execute(select(User).where(User.id == account.user_id))
+        existing_user = result.scalar_one_or_none()
+        if existing_user:
+            return existing_user
+        # If somehow the FK points to a missing user, fall through to create
 
     # Match by email if provided
     if email:
@@ -93,4 +98,3 @@ async def get_or_create_user_for_oauth(
     await db.flush()
     await db.refresh(user)
     return user
-

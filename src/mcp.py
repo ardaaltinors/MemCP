@@ -7,7 +7,7 @@ from starlette.middleware import Middleware
 from src.memory_manager import MemoryManager
 from src.db import init_db
 from src.db.database import get_async_sessionmaker
-from src.middlewares import MCPPathAuthMiddleware
+from src.middlewares import MCPPathAuthMiddleware, MCPOAuthHintMiddleware, MCPOAuthRedirectMiddleware
 from src.core.mcp_auth_provider import build_auth_provider
 from src.utils.tag_parser import parse_tags_input
 import logging
@@ -236,6 +236,8 @@ async def health_check(_: Request) -> PlainTextResponse:
 mcp_app = mcp.http_app(
     path="/mcp",
     middleware=[
+        Middleware(MCPOAuthRedirectMiddleware),
+        Middleware(MCPOAuthHintMiddleware),
         Middleware(MCPPathAuthMiddleware)
     ]
 )

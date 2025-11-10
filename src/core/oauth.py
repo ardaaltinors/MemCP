@@ -29,8 +29,8 @@ def get_oauth() -> OAuth:
         )
 
     # GitHub
-    github_client_id = os.getenv("GITHUB_CLIENT_ID")
-    github_client_secret = os.getenv("GITHUB_CLIENT_SECRET")
+    github_client_id = os.getenv("GITHUB_CLIENT_ID_ASTRO")
+    github_client_secret = os.getenv("GITHUB_CLIENT_SECRET_ASTRO")
     if github_client_id and github_client_secret:
         oauth.register(
             name="github",
@@ -47,12 +47,11 @@ def get_oauth() -> OAuth:
 
 
 def get_callback_url(provider: str) -> str:
-    base = os.getenv("OAUTH_REDIRECT_BASE_URL") or os.getenv("FRONTEND_URL") or "http://localhost:8000"
-    # Our FastAPI callback endpoint
+    # Always point the provider back to the backend callback
+    base = os.getenv("OAUTH_REDIRECT_BASE_URL") or "http://localhost:8000"
     return urljoin(base if base.endswith("/") else base + "/", f"auth/oauth/{provider}/callback")
 
 
 def list_providers() -> Dict[str, bool]:
     oauth = get_oauth()
     return {name: True for name in oauth._clients.keys()}
-

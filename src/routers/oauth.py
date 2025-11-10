@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.oauth import get_oauth, get_callback_url, list_providers
@@ -25,6 +26,13 @@ async def oauth_authorize(provider: str, request: Request):
     oauth = get_oauth()
     if provider not in oauth._clients:
         raise HTTPException(status_code=404, detail="Provider not configured")
+    # Persist frontend redirect if provided
+    frontend_redirect = request.query_params.get("redirect_uri")
+    if frontend_redirect is not None:
+        try:
+            request.session["frontend_redirect_uri"] = frontend_redirect
+        except Exception:
+            pass
     redirect_uri = get_callback_url(provider)
     client = oauth.create_client(provider)
     return await client.authorize_redirect(request, redirect_uri)
@@ -114,6 +122,20 @@ async def oauth_callback(provider: str, request: Request, db: AsyncSession = Dep
     access_token_expires = timedelta(minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     expires_at = datetime.now(timezone.utc) + access_token_expires
     access_token = security.create_access_token(subject=user.username, expires_delta=access_token_expires)
+
+    # If this looks like a browser flow, redirect back to frontend with token fragment
+    redirect_uri = request.query_params.get("redirect_uri") or request.session.get("frontend_redirect_uri") if hasattr(request, 'session') else None
+    accept = request.headers.get("accept", "")
+    if redirect_uri or ("text/html" in accept):
+        from urllib.parse import urlencode
+        target = (redirect_uri or "/").rstrip("/")
+        fragment = urlencode({
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_at": expires_at.isoformat(),
+        })
+        return RedirectResponse(url=f"{target}#{fragment}")
+
     return {
         "access_token": access_token,
         "token_type": "bearer",

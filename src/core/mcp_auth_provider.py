@@ -22,11 +22,15 @@ def build_auth_provider() -> Optional[object]:
         csec = os.getenv("GOOGLE_CLIENT_SECRET")
         if cid and csec:
             _AUTH_PROVIDER = GoogleProvider(client_id=cid, client_secret=csec, base_url=base_url)
+        else:
+            print("[FastMCP OAuth] GOOGLE_CLIENT_ID/SECRET not set; OAuth provider disabled")
     elif provider_name == "github":
-        cid = os.getenv("GITHUB_CLIENT_ID")
-        csec = os.getenv("GITHUB_CLIENT_SECRET")
+        cid = os.getenv("GITHUB_CLIENT_ID_MCP") or os.getenv("GITHUB_CLIENT_ID")
+        csec = os.getenv("GITHUB_CLIENT_SECRET_MCP") or os.getenv("GITHUB_CLIENT_SECRET")
         if cid and csec:
             _AUTH_PROVIDER = GitHubProvider(client_id=cid, client_secret=csec, base_url=base_url)
+        else:
+            print("[FastMCP OAuth] GITHUB_CLIENT_ID_MCP/SECRET_MCP (or GITHUB_CLIENT_ID/SECRET) not set; OAuth provider disabled")
     # elif provider_name == "oidc":
     #     issuer = os.getenv("OIDC_ISSUER")
     #     cid = os.getenv("OIDC_CLIENT_ID")
@@ -41,9 +45,10 @@ def build_auth_provider() -> Optional[object]:
     #             configuration_url=config_url,
     #         )
 
+    if _AUTH_PROVIDER is None and provider_name:
+        print(f"[FastMCP OAuth] MCP_AUTH_PROVIDER='{provider_name}' requested but provider not initialized; falling back to no auth")
     return _AUTH_PROVIDER
 
 
 def get_auth_provider() -> Optional[object]:
     return _AUTH_PROVIDER
-

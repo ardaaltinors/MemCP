@@ -62,17 +62,18 @@ class MCPPathAuthMiddleware:
         # Legacy path-based auth: /mcp/{api_key}/...
         if path.startswith("/mcp/"):
             remainder = path[len("/mcp/"):]
-            if remainder and not remainder.startswith("health"):
+            if remainder:
                 first, _, tail = remainder.partition("/")
-                if not api_key:
+                # Only treat as API key if it looks like our keys (e.g., starts with sk_)
+                if first.startswith("sk_") and not api_key:
                     api_key = first
-                new_path = "/mcp" + ("/" + tail if tail else "")
-                if new_path != path:
-                    if self.debug:
-                        logger.debug(f"Rewriting MCP path from {path} -> {new_path}")
-                    scope = dict(scope)
-                    scope["path"] = new_path
-                    scope["raw_path"] = new_path.encode()
+                    new_path = "/mcp" + ("/" + tail if tail else "")
+                    if new_path != path:
+                        if self.debug:
+                            logger.debug(f"Rewriting MCP path from {path} -> {new_path}")
+                        scope = dict(scope)
+                        scope["path"] = new_path
+                        scope["raw_path"] = new_path.encode()
 
         if jwt_token:
             token_data = security.decode_token(jwt_token)
