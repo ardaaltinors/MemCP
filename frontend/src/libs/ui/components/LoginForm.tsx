@@ -259,7 +259,7 @@ export const LoginForm: FC<LoginFormProps> = ({ onSubmit, onSuccess, onError }) 
                     type="button"
                     onClick={() => {
                         const frontendCallback = `${window.location.origin}/auth/callback`;
-                        const url = `${import.meta.env.PUBLIC_BACKEND_URL}/auth/oauth/github/authorize?redirect_uri=${encodeURIComponent(frontendCallback)}`;
+                        const url = `/api/auth/oauth/github/authorize?redirect_uri=${encodeURIComponent(frontendCallback)}`;
                         window.location.href = url;
                     }}
                     className="w-full py-3 px-4 rounded-lg font-semibold text-white bg-gray-800 hover:bg-gray-700 border border-gray-600 flex items-center justify-center gap-2"
