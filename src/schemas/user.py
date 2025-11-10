@@ -63,6 +63,9 @@ class PasswordChangeRequest(BaseModel):
     old_password: str
     new_password: str
 
+class AccountDeletionRequest(BaseModel):
+    confirm: str
+
 # Schema for processed user profile
 class ProcessedUserProfile(BaseModel):
     id: int

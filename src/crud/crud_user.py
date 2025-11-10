@@ -101,4 +101,70 @@ async def revoke_api_key(db: AsyncSession, user: User) -> bool:
 
 def has_api_key(user: User) -> bool:
     """Check if user has an active API key"""
-    return user.api_key is not None 
+    return user.api_key is not None
+
+async def delete_user_and_all_data(db: AsyncSession, user: User) -> dict:
+    """
+    Permanently delete a user and ALL associated data.
+
+    This is a destructive operation that will delete:
+    - All memories (database and vector store)
+    - All OAuth accounts
+    - All user messages
+    - Processed user profiles
+    - The user account itself
+
+    Returns a dictionary with deletion statistics.
+    """
+    from sqlalchemy import delete as sql_delete
+    from src.db.models.oauth_account import OAuthAccount
+    from src.db.models.user_message import UserMessage
+    from src.db.models.processed_user_profile import ProcessedUserProfile
+    from src.crud.crud_memory import delete_all_user_memories
+    from src.utils.vector_store import VectorStore
+
+    stats = {
+        "user_id": str(user.id),
+        "username": user.username,
+        "memories_deleted": 0,
+        "vector_memories_deleted": 0,
+        "oauth_accounts_deleted": 0,
+        "user_messages_deleted": 0,
+        "processed_profiles_deleted": 0
+    }
+
+    # 1. Delete all memories from database
+    memories_count = await delete_all_user_memories(db, user.id)
+    stats["memories_deleted"] = memories_count
+
+    # 2. Delete all memories from vector store (Qdrant)
+    try:
+        vector_store = VectorStore()
+        vector_count = await vector_store.delete_all_user_memories(user.id)
+        stats["vector_memories_deleted"] = vector_count
+    except Exception as e:
+        pass
+
+    # 3. Delete all OAuth accounts
+    oauth_result = await db.execute(
+        sql_delete(OAuthAccount).where(OAuthAccount.user_id == user.id)
+    )
+    stats["oauth_accounts_deleted"] = oauth_result.rowcount
+
+    # 4. Delete all user messages
+    messages_result = await db.execute(
+        sql_delete(UserMessage).where(UserMessage.user_id == user.id)
+    )
+    stats["user_messages_deleted"] = messages_result.rowcount
+
+    # 5. Delete processed user profiles
+    profile_result = await db.execute(
+        sql_delete(ProcessedUserProfile).where(ProcessedUserProfile.user_id == user.id)
+    )
+    stats["processed_profiles_deleted"] = profile_result.rowcount
+
+    # 6. Finally, delete the user
+    await db.delete(user)
+    await db.flush()
+
+    return stats 

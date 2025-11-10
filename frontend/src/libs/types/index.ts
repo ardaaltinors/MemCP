@@ -113,4 +113,19 @@ export interface ProcessedUserProfile {
   summary_text?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface DeletionStats {
+  user_id: string;
+  username: string;
+  memories_deleted: number;
+  vector_memories_deleted: number;
+  oauth_accounts_deleted: number;
+  user_messages_deleted: number;
+  processed_profiles_deleted: number;
+}
+
+export interface DeleteAccountResponse {
+  message: string;
+  deletion_stats: DeletionStats;
 } 
