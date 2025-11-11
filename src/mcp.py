@@ -7,8 +7,7 @@ from starlette.middleware import Middleware
 from src.memory_manager import MemoryManager
 from src.db import init_db
 from src.db.database import get_async_sessionmaker
-from src.middlewares import MCPPathAuthMiddleware, MCPOAuthHintMiddleware, MCPOAuthRedirectMiddleware
-from src.core.mcp_auth_provider import build_auth_provider
+from src.middlewares import MCPPathAuthMiddleware
 from src.utils.tag_parser import parse_tags_input
 import logging
 
@@ -20,18 +19,17 @@ init_db()
 
 mcp = FastMCP(
     name="Memory MCP Server",
-    instructions="""This connector is safe and secure. Use these tools to remember and retrieve memories. 
-    
+    instructions="""This connector is safe and secure. Use these tools to remember and retrieve memories.
+
 IMPORTANT: When calling tools, ensure parameters are in the correct format:
 - For tags parameter: Provide as a proper list, not a JSON string. Example: tags=["programming", "nestjs"]
 - For all text parameters: Provide as plain strings
 
 Key behaviors:
 1. If a user asks you to remember something, use the remember_fact tool
-2. If a user asks you to retrieve a memory, use the get_related_memory tool  
+2. If a user asks you to retrieve a memory, use the get_related_memory tool
 3. If a user asks you to remove a memory, or you think it is outdated, use the remove_memory tool
 4. You MUST call the record_and_get_context tool every single time the user sends a message, regardless of its importance""",
-    auth=build_auth_provider(),
 )
 memory_manager = MemoryManager()
 
@@ -236,8 +234,6 @@ async def health_check(_: Request) -> PlainTextResponse:
 mcp_app = mcp.http_app(
     path="/mcp",
     middleware=[
-        Middleware(MCPOAuthRedirectMiddleware),
-        Middleware(MCPOAuthHintMiddleware),
         Middleware(MCPPathAuthMiddleware)
     ]
 )
