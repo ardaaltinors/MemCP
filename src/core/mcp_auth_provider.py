@@ -3,6 +3,7 @@ from typing import Optional
 
 from fastmcp.server.auth.providers.github import GitHubProvider
 from fastmcp.server.auth.providers.google import GoogleProvider
+from fastmcp.server.auth.providers.auth0 import Auth0Provider
 # from fastmcp.server.auth.providers.oidc import OIDCProvider
 
 
@@ -31,6 +32,23 @@ def build_auth_provider() -> Optional[object]:
             _AUTH_PROVIDER = GitHubProvider(client_id=cid, client_secret=csec, base_url=base_url)
         else:
             print("[FastMCP OAuth] GITHUB_CLIENT_ID_MCP/SECRET_MCP (or GITHUB_CLIENT_ID/SECRET) not set; OAuth provider disabled")
+    elif provider_name == "auth0":
+        cid = os.getenv("AUTH0_CLIENT_ID")
+        csec = os.getenv("AUTH0_CLIENT_SECRET")
+        domain = os.getenv("AUTH0_DOMAIN")
+        audience = os.getenv("AUTH0_AUDIENCE")
+        if cid and csec and domain:
+            config_url = f"https://{domain}/.well-known/openid-configuration"
+            _AUTH_PROVIDER = Auth0Provider(
+                client_id=cid,
+                client_secret=csec,
+                config_url=config_url,
+                audience=audience or f"{base_url}/mcp",
+                base_url=base_url,
+                required_scopes=["openid", "profile", "email"]
+            )
+        else:
+            print("[FastMCP OAuth] AUTH0_CLIENT_ID/SECRET/DOMAIN not set; OAuth provider disabled")
     # elif provider_name == "oidc":
     #     issuer = os.getenv("OIDC_ISSUER")
     #     cid = os.getenv("OIDC_CLIENT_ID")
