@@ -38,8 +38,9 @@ class MCPPathAuthMiddleware:
         headers = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
 
         # Debug logging for troubleshooting
-        auth_header_preview = headers.get("authorization", "None")[:50] if headers.get("authorization") else "None"
-        logger.debug(f"MCP Auth Check - Path: {path}, Authorization: {auth_header_preview}...")
+        if path.startswith("/mcp"):
+            auth_header_preview = headers.get("authorization", "None")[:50] if headers.get("authorization") else "None"
+            logger.info(f"[AUTH] MCP Request - Path: {path}, Auth Header: {auth_header_preview}...")
 
         # Extract credentials from Authorization header
         api_key = None
@@ -51,17 +52,29 @@ class MCPPathAuthMiddleware:
             token_data = security.decode_token(bearer)
             if token_data and token_data.sub:
                 jwt_token = bearer
+                if path.startswith("/mcp"):
+                    logger.info(f"[AUTH] Identified as internal JWT for user: {token_data.sub}")
             else:
                 # If it looks like a JWT (contains at least 2 dots), assume FastMCP OAuth token
                 # and do NOT treat it as an API key. Let FastMCP auth handle it downstream.
                 if bearer.count('.') >= 2:
+                    if path.startswith("/mcp"):
+                        logger.info(f"[AUTH] Token has {bearer.count('.')} dots - passing to FastMCP OAuth validation")
                     pass  # leave both jwt_token and api_key as None
                 else:
                     # Legacy behavior: allow API key in Bearer header
                     api_key = bearer
+                    if path.startswith("/mcp"):
+                        logger.info(f"[AUTH] Token identified as API key: {api_key[:10]}...")
         # Also support X-API-Key header
         if not api_key and not jwt_token and headers.get("x-api-key"):
             api_key = headers.get("x-api-key")
+            if path.startswith("/mcp"):
+                logger.info(f"[AUTH] Using X-API-Key header: {api_key[:10]}...")
+
+        # Log if no credentials found
+        if path.startswith("/mcp") and not api_key and not jwt_token and not auth_header:
+            logger.info(f"[AUTH] No credentials found - request will be handled by downstream auth")
 
         # Legacy path-based auth: /mcp/{api_key}/...
         if path.startswith("/mcp/"):
