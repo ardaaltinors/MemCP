@@ -95,7 +95,7 @@ export const CredentialsContainer: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<string>('');
-  const [selectedAuthMethod, setSelectedAuthMethod] = useState<AuthMethod>('oauth');
+  const [selectedAuthMethod, setSelectedAuthMethod] = useState<AuthMethod>('apikey');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRevoking, setIsRevoking] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<{ [key: string]: boolean }>({});
@@ -190,6 +190,25 @@ export const CredentialsContainer: React.FC = () => {
     }
   };
 
+  const handleCopyInstructionUrl = async (url: string, key: string) => {
+    const success = await copyToClipboard(url);
+    if (success) {
+      showCopyFeedback(key);
+    }
+  };
+
+  const parseInstructionStep = (step: string): { hasUrl: boolean; label?: string; url?: string; text?: string } => {
+    const urlMatch = step.match(/^(.+?):\s*(https?:\/\/.+)$/);
+    if (urlMatch) {
+      return {
+        hasUrl: true,
+        label: urlMatch[1].trim(),
+        url: urlMatch[2].trim()
+      };
+    }
+    return { hasUrl: false, text: step };
+  };
+
   useEffect(() => {
     fetchApiKey();
   }, []);
@@ -230,18 +249,100 @@ export const CredentialsContainer: React.FC = () => {
               )}
 
               <div className="space-y-4 md:space-y-6 flex-1">
-                {/* OAuth Method - Recommended */}
+                {/* API Key Method - Recommended */}
                 <div className="bg-gray-800/50 border-2 border-green-500/30 rounded-xl p-4 md:p-6 space-y-4">
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg md:text-xl font-semibold text-white">OAuth Authentication</h3>
+                        <h3 className="text-lg md:text-xl font-semibold text-white">API Key Authentication</h3>
                         <span className="px-2.5 py-1 bg-green-500/20 border border-green-500/50 text-green-400 rounded-full text-xs font-semibold">
                           RECOMMENDED
                         </span>
                       </div>
                       <p className="text-gray-400 text-sm">
-                        Modern, secure authentication. Supported by Cursor, Claude Desktop, and other OAuth-compatible clients.
+                        Battle-tested and reliable. Works universally with Claude Desktop, Cursor, ChatGPT, and all MCP clients.
+                      </p>
+                    </div>
+                  </div>
+
+                  {apiKeyData?.has_api_key ? (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-400 mb-2">Connection URL</label>
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-lg text-gray-300 font-mono text-sm break-all">
+                            {apiKeyData.connection_url || 'No connection URL available'}
+                          </code>
+                          <button
+                            onClick={() => handleCopyUrl(apiKeyData.connection_url || '', 'apiKeyUrl')}
+                            className="px-4 py-2.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 text-blue-400 rounded-lg transition-colors text-sm font-medium shrink-0"
+                          >
+                            {copyFeedback.apiKeyUrl ? (
+                              <span className="flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                Copied!
+                              </span>
+                            ) : 'Copy'}
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1.5">
+                          Created: {apiKeyData.created_at ? new Date(apiKeyData.created_at).toLocaleDateString() : 'Unknown'}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={handleRevokeApiKey}
+                        disabled={isRevoking}
+                        className="w-full px-4 py-2.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-400 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+                      >
+                        {isRevoking ? 'Revoking...' : 'Revoke API Key'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <svg className="w-12 h-12 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                      </svg>
+                      <p className="text-gray-400 text-sm mb-4">No API key generated yet</p>
+                      <button
+                        onClick={handleGenerateApiKey}
+                        disabled={isGenerating}
+                        className="px-6 py-2.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 text-purple-400 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+                      >
+                        {isGenerating ? 'Generating...' : 'Generate API Key'}
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-green-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div className="text-sm text-green-300">
+                        <p className="font-medium mb-1">Universal Compatibility</p>
+                        <p className="text-green-300/90 text-xs">
+                          Works with all MCP clients. No browser popups, no token expiration issues. Simply copy your connection URL and paste it into any MCP client.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* OAuth Method - Beta */}
+                <div className="bg-gray-800/50 border border-blue-500/30 rounded-xl p-4 md:p-6 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg md:text-xl font-semibold text-white">OAuth Authentication</h3>
+                        <span className="px-2.5 py-1 bg-amber-500/20 border border-amber-500/50 text-amber-400 rounded-full text-xs font-semibold">
+                          BETA
+                        </span>
+                      </div>
+                      <p className="text-gray-400 text-sm">
+                        Modern OAuth 2.0 authentication. Works well with ChatGPT and Cursor. Claude Desktop support is experimental due to client-side token persistence issues.
                       </p>
                     </div>
                   </div>
@@ -285,93 +386,39 @@ export const CredentialsContainer: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* API Key Method - Legacy */}
-                <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 md:p-6 space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg md:text-xl font-semibold text-white">API Key Authentication</h3>
-                        <span className="px-2.5 py-1 bg-gray-500/20 border border-gray-500/50 text-gray-400 rounded-full text-xs font-semibold">
-                          LEGACY
-                        </span>
-                      </div>
-                      <p className="text-gray-400 text-sm">
-                        For clients that don't support OAuth. Less secure but more compatible.
-                      </p>
-                    </div>
-                  </div>
-
-                  {apiKeyData?.has_api_key ? (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-2">API Key</label>
-                        <div className="px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-lg">
-                          <code className="text-gray-300 font-mono text-sm break-all">
-                            {apiKeyData.api_key || 'SK_••••••••'}
-                          </code>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1.5">
-                          Created: {apiKeyData.created_at ? new Date(apiKeyData.created_at).toLocaleDateString() : 'Unknown'}
-                        </p>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-2">Connection URL (with API Key)</label>
-                        <div className="flex items-center gap-2">
-                          <code className="flex-1 px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-lg text-gray-300 font-mono text-sm break-all">
-                            {apiKeyData.connection_url || 'No connection URL available'}
-                          </code>
-                          <button
-                            onClick={() => handleCopyUrl(apiKeyData.connection_url || '', 'apiKeyUrl')}
-                            className="px-4 py-2.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 text-blue-400 rounded-lg transition-colors text-sm font-medium shrink-0"
-                          >
-                            {copyFeedback.apiKeyUrl ? (
-                              <span className="flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                Copied!
-                              </span>
-                            ) : 'Copy'}
-                          </button>
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <svg className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="text-sm text-amber-300">
+                          <p className="font-medium mb-2">Client Compatibility Status:</p>
+                          <div className="space-y-1 text-xs">
+                            <div className="flex items-center gap-2">
+                              <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              <span className="text-amber-300/90"><strong>ChatGPT:</strong> Fully supported</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              <span className="text-amber-300/90"><strong>Cursor:</strong> Fully supported</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                              <span className="text-amber-300/90"><strong>Claude Desktop:</strong> Beta (may require reconnection)</span>
+                            </div>
+                          </div>
+                          <p className="text-amber-300/80 text-xs mt-2">
+                            If you experience issues, we recommend using API Key authentication for the most reliable connection.
+                          </p>
                         </div>
                       </div>
-
-                      <button
-                        onClick={handleRevokeApiKey}
-                        disabled={isRevoking}
-                        className="w-full px-4 py-2.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-400 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
-                      >
-                        {isRevoking ? 'Revoking...' : 'Revoke API Key'}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="text-center py-6">
-                      <svg className="w-12 h-12 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                      </svg>
-                      <p className="text-gray-400 text-sm mb-4">No API key generated yet</p>
-                      <button
-                        onClick={handleGenerateApiKey}
-                        disabled={isGenerating}
-                        className="px-6 py-2.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 text-purple-400 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
-                      >
-                        {isGenerating ? 'Generating...' : 'Generate API Key'}
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
-                    <div className="flex items-start gap-2">
-                      <svg className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                      </svg>
-                      <p className="text-amber-300 text-xs">
-                        <strong>Security Notice:</strong> The connection URL contains your API key. Treat it like a password.
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -394,26 +441,26 @@ export const CredentialsContainer: React.FC = () => {
                 <label className="block text-xs md:text-sm font-medium text-gray-300 mb-3">Authentication Method</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
-                    onClick={() => setSelectedAuthMethod('oauth')}
+                    onClick={() => setSelectedAuthMethod('apikey')}
                     className={`p-3 rounded-lg border-2 transition-all ${
-                      selectedAuthMethod === 'oauth'
+                      selectedAuthMethod === 'apikey'
                         ? 'border-green-500/50 bg-green-500/10 text-white'
                         : 'border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-600'
                     }`}
                   >
-                    <div className="text-sm font-semibold">OAuth</div>
+                    <div className="text-sm font-semibold">API Key</div>
                     <div className="text-xs mt-1 opacity-75">Recommended</div>
                   </button>
                   <button
-                    onClick={() => setSelectedAuthMethod('apikey')}
+                    onClick={() => setSelectedAuthMethod('oauth')}
                     className={`p-3 rounded-lg border-2 transition-all ${
-                      selectedAuthMethod === 'apikey'
-                        ? 'border-purple-500/50 bg-purple-500/10 text-white'
+                      selectedAuthMethod === 'oauth'
+                        ? 'border-blue-500/50 bg-blue-500/10 text-white'
                         : 'border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-600'
                     }`}
                   >
-                    <div className="text-sm font-semibold">API Key</div>
-                    <div className="text-xs mt-1 opacity-75">Legacy</div>
+                    <div className="text-sm font-semibold">OAuth</div>
+                    <div className="text-xs mt-1 opacity-75">Beta</div>
                   </button>
                 </div>
               </div>
@@ -429,7 +476,7 @@ export const CredentialsContainer: React.FC = () => {
                   <option value="">Choose a client...</option>
                   {getMcpClients(apiKeyData?.connection_url || '', selectedAuthMethod, baseMcpUrl).map((client) => (
                     <option key={client.id} value={client.id}>
-                      {client.name} {client.supportsOAuth ? '(Supports OAuth)' : '(API Key only)'}
+                      {client.name}
                     </option>
                   ))}
                 </select>
@@ -456,15 +503,46 @@ export const CredentialsContainer: React.FC = () => {
                             </svg>
                             Setup Instructions
                           </h4>
-                          <ol className="space-y-2">
-                            {client.instructions.map((step, index) => (
-                              <li key={index} className="flex items-start space-x-2 md:space-x-3">
-                                <span className="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 bg-purple-600 text-white rounded-full text-xs md:text-sm flex items-center justify-center font-medium">
-                                  {index + 1}
-                                </span>
-                                <span className="text-gray-300 text-sm md:text-base">{step}</span>
-                              </li>
-                            ))}
+                          <ol className="space-y-3">
+                            {client.instructions.map((step, index) => {
+                              const parsed = parseInstructionStep(step);
+                              return (
+                                <li key={index} className="flex items-start space-x-2 md:space-x-3">
+                                  <span className="flex-shrink-0 w-5 h-5 md:w-6 md:h-6 bg-purple-600 text-white rounded-full text-xs md:text-sm flex items-center justify-center font-medium">
+                                    {index + 1}
+                                  </span>
+                                  {parsed.hasUrl ? (
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-gray-300 text-sm md:text-base mb-1.5">{parsed.label}</div>
+                                      <div
+                                        onClick={() => handleCopyInstructionUrl(parsed.url!, `instruction-${index}`)}
+                                        className="group relative bg-gray-900 border border-gray-600 rounded-lg p-2.5 cursor-pointer hover:border-blue-500/50 transition-all"
+                                      >
+                                        <code className="text-gray-300 font-mono text-xs md:text-sm break-all block pr-8">
+                                          {parsed.url}
+                                        </code>
+                                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                          {copyFeedback[`instruction-${index}`] ? (
+                                            <span className="flex items-center gap-1 text-green-400 text-xs">
+                                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                              </svg>
+                                            </span>
+                                          ) : (
+                                            <svg className="w-3.5 h-3.5 text-gray-500 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </svg>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <p className="text-xs text-gray-500 mt-1">Click to copy</p>
+                                    </div>
+                                  ) : (
+                                    <span className="flex-1 text-gray-300 text-sm md:text-base">{parsed.text}</span>
+                                  )}
+                                </li>
+                              );
+                            })}
                           </ol>
                         </div>
 
