@@ -52,17 +52,29 @@ def check_qdrant_health() -> Dict[str, Any]:
 def check_redis_health() -> Dict[str, Any]:
     """Check Redis cache health."""
     try:
-        redis_client = redis.Redis(
+        celery_client = redis.Redis(
             host=os.getenv("REDIS_HOST", "localhost"),
             port=int(os.getenv("REDIS_PORT", "6379")),
             db=0,
             socket_connect_timeout=5
         )
-        redis_client.ping()
-        key_count = redis_client.dbsize()
+        celery_client.ping()
+        celery_key_count = celery_client.dbsize()
+
+        cache_client = redis.Redis(
+            host=os.getenv("REDIS_HOST", "localhost"),
+            port=int(os.getenv("REDIS_PORT", "6379")),
+            db=1,
+            socket_connect_timeout=5
+        )
+        cache_client.ping()
+        cache_key_count = cache_client.dbsize()
+
         return {
             "status": "healthy",
-            "details": f"Connection successful, {key_count} keys in DB"
+            "details": f"Connection successful",
+            "celery_keys": celery_key_count,
+            "cache_keys": cache_key_count
         }
     except Exception as e:
         logger.error(f"Redis health check failed: {e}")

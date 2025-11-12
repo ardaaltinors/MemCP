@@ -15,6 +15,7 @@ from src.exceptions import (
     DuplicateRecordError, RecordNotFoundError
 )
 from src.exceptions.handlers import ExceptionHandler
+from src.utils.user_cache import invalidate_user_cache
 
 router = APIRouter()
 
@@ -123,13 +124,15 @@ async def change_password(
     # Verify the old password
     if not verify_password(password_change.old_password, current_user.hashed_password):
         raise InvalidCredentialsError(message="Invalid current password")
-    
+
     # Update the password
     current_user.hashed_password = get_password_hash(password_change.new_password)
     db.add(current_user)
     await db.flush()
     await db.refresh(current_user)
-    
+
+    invalidate_user_cache(current_user)
+
     return {"message": "Password changed successfully"}
 
 
