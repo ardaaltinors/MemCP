@@ -58,101 +58,229 @@ class MCPOAuthRedirectMiddleware:
         await self.app(scope, receive, send_wrapper)
 
     def _create_redirect_page(self, redirect_url: str) -> str:
-        """Create an HTML page that redirects using JavaScript."""
         return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Authorization Successful</title>
+    <title>Authorization Successful - MemCP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-color: #0D0D1A;
+            background-image:
+                radial-gradient(ellipse 800px 600px at 10% 90%, rgba(59, 130, 246, 0.15) 0%, rgba(99, 102, 241, 0.1) 40%, transparent 70%),
+                radial-gradient(circle 1000px at 50% 50%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 900px 700px at 85% 15%, rgba(168, 85, 247, 0.12) 0%, rgba(139, 92, 246, 0.06) 50%, transparent 70%),
+                radial-gradient(circle 600px at 30% 30%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-size: cover;
+            color: #ffffff;
         }}
+
         .container {{
-            background: white;
+            background: rgba(17, 24, 39, 0.5);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             padding: 3rem;
-            border-radius: 12px;
+            border-radius: 16px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
+            max-width: 520px;
+            width: 90%;
             text-align: center;
         }}
-        h1 {{
-            color: #2d3748;
-            margin-bottom: 1rem;
-            font-size: 1.875rem;
+
+        .branding {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
+            gap: 0.75rem;
         }}
+
+        .logo {{
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: white;
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
+        }}
+
+        .brand-name {{
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }}
+
+        .success-icon {{
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            animation: success-pulse 2s ease-in-out infinite;
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+        }}
+
+        @keyframes success-pulse {{
+            0%, 100% {{
+                box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+                transform: scale(1);
+            }}
+            50% {{
+                box-shadow: 0 0 50px rgba(16, 185, 129, 0.6);
+                transform: scale(1.05);
+            }}
+        }}
+
+        h1 {{
+            color: #ffffff;
+            margin-bottom: 0.75rem;
+            font-size: 1.875rem;
+            font-weight: 700;
+        }}
+
         p {{
-            color: #4a5568;
+            color: #9ca3af;
             line-height: 1.6;
             margin-bottom: 1.5rem;
+            font-size: 1rem;
         }}
+
         .spinner {{
-            border: 3px solid #f3f4f6;
-            border-top: 3px solid #667eea;
+            border: 3px solid rgba(59, 130, 246, 0.2);
+            border-top: 3px solid #3b82f6;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 48px;
+            height: 48px;
             animation: spin 1s linear infinite;
             margin: 2rem auto;
         }}
+
         @keyframes spin {{
             0% {{ transform: rotate(0deg); }}
             100% {{ transform: rotate(360deg); }}
         }}
+
         .manual-link {{
             display: none;
             margin-top: 2rem;
-            padding: 1rem;
-            background: #f7fafc;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
+            padding: 1.5rem;
+            background: rgba(17, 24, 39, 0.6);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
         }}
+
+        .manual-link p {{
+            color: #9ca3af;
+            margin-bottom: 1rem;
+        }}
+
+        .manual-link strong {{
+            color: #ffffff;
+            display: block;
+            margin-bottom: 0.5rem;
+        }}
+
         .manual-link code {{
             display: block;
             margin: 1rem 0;
-            padding: 0.75rem;
-            background: white;
-            border: 1px solid #cbd5e0;
-            border-radius: 4px;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
             font-size: 0.875rem;
             word-break: break-all;
-            color: #2d3748;
+            color: #e5e7eb;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            text-align: left;
         }}
+
         .copy-btn {{
-            background: #667eea;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
             color: white;
             border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 6px;
+            padding: 0.875rem 2rem;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 1rem;
-            transition: background 0.2s;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }}
+
         .copy-btn:hover {{
-            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
         }}
-        .success-icon {{
-            font-size: 3rem;
-            margin-bottom: 1rem;
+
+        .copy-btn:active {{
+            transform: translateY(0);
+        }}
+
+        @media (max-width: 640px) {{
+            .container {{
+                padding: 2rem 1.5rem;
+            }}
+
+            h1 {{
+                font-size: 1.5rem;
+            }}
+
+            .brand-name {{
+                font-size: 1.5rem;
+            }}
+
+            .logo {{
+                width: 40px;
+                height: 40px;
+                font-size: 1.25rem;
+            }}
         }}
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="branding">
+            <div class="logo">M</div>
+            <div class="brand-name">MemCP</div>
+        </div>
+
         <div class="success-icon">✓</div>
         <h1>Authorization Successful!</h1>
         <p>Redirecting you back to the application...</p>
         <div class="spinner"></div>
 
         <div class="manual-link" id="manualLink">
-            <p><strong>The automatic redirect didn't work?</strong></p>
+            <strong>The automatic redirect didn't work?</strong>
             <p>Click the button below to copy the redirect URL and paste it into your browser's address bar:</p>
             <code id="redirectUrl">{redirect_url}</code>
             <button class="copy-btn" onclick="copyUrl()">Copy URL</button>
@@ -165,10 +293,16 @@ class MCPOAuthRedirectMiddleware:
         function copyUrl() {{
             navigator.clipboard.writeText(redirectUrl).then(() => {{
                 const btn = document.querySelector('.copy-btn');
+                const originalText = btn.textContent;
                 btn.textContent = 'Copied!';
+                btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
                 setTimeout(() => {{
-                    btn.textContent = 'Copy URL';
+                    btn.textContent = originalText;
+                    btn.style.background = 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)';
                 }}, 2000);
+            }}).catch(err => {{
+                console.error('Failed to copy:', err);
+                alert('Failed to copy URL. Please copy it manually.');
             }});
         }}
 
@@ -182,12 +316,13 @@ class MCPOAuthRedirectMiddleware:
         }}
 
         function showManualLink() {{
-            document.querySelector('.spinner').style.display = 'none';
-            document.getElementById('manualLink').style.display = 'block';
+            const spinner = document.querySelector('.spinner');
+            const manualLink = document.getElementById('manualLink');
+            if (spinner) spinner.style.display = 'none';
+            if (manualLink) manualLink.style.display = 'block';
         }}
 
         setTimeout(attemptRedirect, 500);
-
         setTimeout(showManualLink, 5000);
     </script>
 </body>
