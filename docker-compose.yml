@@ -14,6 +14,7 @@ services:
     environment:
       - PYTHONPATH=/app
       - ENVIRONMENT=production
+      - DEBUG=${DEBUG:-false}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       # Database Configuration
       - DB_HOST=postgres
@@ -41,10 +42,6 @@ services:
       - AUTH_ACCESS_TOKEN_EXPIRE_MINUTES=${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-120}
       # FastMCP OAuth
       - MCP_AUTH_PROVIDER=${MCP_AUTH_PROVIDER}
-      - OIDC_ISSUER=${OIDC_ISSUER}
-      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
-      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
-      - OIDC_CONFIG_URL=${OIDC_CONFIG_URL}
       - OAUTH_REDIRECT_BASE_URL=${OAUTH_REDIRECT_BASE_URL:-https://mcp.altinors.com/api}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}

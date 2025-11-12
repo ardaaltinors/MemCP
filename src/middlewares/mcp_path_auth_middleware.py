@@ -37,6 +37,11 @@ class MCPPathAuthMiddleware:
         path: str = scope.get("path", "")
         headers = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
 
+        # Debug logging for troubleshooting
+        if self.debug and path.startswith("/mcp"):
+            auth_header_preview = headers.get("authorization", "None")[:50] if headers.get("authorization") else "None"
+            logger.debug(f"MCP Auth Check - Path: {path}, Authorization: {auth_header_preview}...")
+
         # Extract credentials from Authorization header
         api_key = None
         jwt_token = None
