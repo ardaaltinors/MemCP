@@ -7,7 +7,8 @@ type AuthMethod = 'oauth' | 'apikey';
 
 const getBaseMcpUrl = (connectionUrl: string | undefined): string => {
   if (!connectionUrl) {
-    return 'https://mcp.altinors.com/mcp';
+    const mcpBaseUrl = import.meta.env.PUBLIC_MCP_URL || window.location.origin;
+    return `${mcpBaseUrl}/mcp`;
   }
 
   const lastSlashIndex = connectionUrl.lastIndexOf('/');

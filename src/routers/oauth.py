@@ -62,7 +62,7 @@ async def oauth_callback(provider: str, request: Request, db: AsyncSession = Dep
             userinfo = await client.parse_id_token(request, token)
             email = userinfo.get("email")
             subject = userinfo.get("sub")
-            username_hint = userinfo.get("given_name") or email.split("@")[0]
+            username_hint = userinfo.get("given_name") or (email.split("@")[0] if email else "user")
             expires = token.get("expires_at")
         elif provider == "github":
             # Get primary email

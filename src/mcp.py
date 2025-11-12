@@ -140,6 +140,7 @@ async def record_and_get_context(
         session_maker = get_async_sessionmaker()
         async with session_maker() as db:
             user_id = await resolve_user_id(ctx, db)
+            await db.commit()
         llm_response = await memory_manager.process_context(prompt, user_id)
         
         if ctx:
@@ -175,6 +176,7 @@ async def get_related_memory(
         session_maker = get_async_sessionmaker()
         async with session_maker() as db:
             user_id = await resolve_user_id(ctx, db)
+            await db.commit()
         results = await memory_manager.search_related(query_text=query, user_id=user_id)
         
         if ctx:
