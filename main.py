@@ -103,7 +103,12 @@ async def lifespan(app: FastAPI):
     
     # Startup
     logger.info("FastAPI application starting up...")
-    
+
+    # Log environment configuration
+    logger.info(f"[CONFIG] ENVIRONMENT: {os.getenv('ENVIRONMENT') or 'NOT SET'}")
+    logger.info(f"[CONFIG] LOG_LEVEL: {os.getenv('LOG_LEVEL') or 'NOT SET (using INFO)'}")
+    logger.info(f"[CONFIG] DEBUG: {os.getenv('DEBUG') or 'NOT SET (using false)'}")
+
     # Record server start time
     global server_start_time
     server_start_time = datetime.now(timezone.utc)

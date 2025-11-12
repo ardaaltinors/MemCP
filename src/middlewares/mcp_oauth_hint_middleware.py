@@ -1,5 +1,8 @@
 import os
+import logging
 from typing import Callable, Awaitable
+
+logger = logging.getLogger(__name__)
 
 
 class MCPOAuthHintMiddleware:
@@ -27,6 +30,7 @@ class MCPOAuthHintMiddleware:
 
         # Hint only on the MCP endpoint root (with or without trailing slash), without any credentials
         if path in ("/mcp", "/mcp/") and not has_auth_header and not has_x_api_key:
+            logger.info(f"[OAUTH_HINT] No credentials provided, returning 401 with OAuth hint")
             # Compute absolute metadata URL - always without trailing slash
             # FastMCP serves .well-known endpoints without trailing slash
             scheme = (headers.get("x-forwarded-proto") or "http").split(",")[0].strip()
@@ -53,6 +57,9 @@ class MCPOAuthHintMiddleware:
             )
             await send({"type": "http.response.body", "body": b""})
             return
+        elif path in ("/mcp", "/mcp/"):
+            auth_preview = headers.get("authorization", "None")[:50] if headers.get("authorization") else "None"
+            logger.info(f"[OAUTH_HINT] Has credentials - auth_header={has_auth_header}, x_api_key={has_x_api_key}, preview={auth_preview}")
 
         return await self.app(scope, receive, send)
 
