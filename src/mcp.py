@@ -11,6 +11,7 @@ from src.middlewares import MCPPathAuthMiddleware, MCPOAuthHintMiddleware, MCPOA
 from src.core.mcp_auth_provider import build_auth_provider
 from src.utils.tag_parser import parse_tags_input
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -96,13 +97,37 @@ async def remember_fact(
             user_id = await resolve_user_id(ctx, db)
             result = await memory_manager.store(content, db, user_id, parsed_tags)
             await db.commit()
-            
+
             if ctx:
                 await ctx.info(f"[User: {user_id}, Request: {ctx.request_id}] Successfully stored memory: {result}")
-                
-            return result
+
+            memory_id = result.split("Memory stored with ID: ")[1]
+
+            # Search for similar memories
+            try:
+                similar_memories = await memory_manager.search_related(query_text=content, user_id=user_id)
+                similar_memories = [m for m in similar_memories if m['id'] != memory_id][:5]
+
+                if ctx:
+                    await ctx.debug(f"Found {len(similar_memories)} similar memories")
+
+                response = result
+                if similar_memories:
+                    debug_mode = os.getenv("DEBUG", "false").lower() == "true"
+                    response += "\n\nSimilar memories found:"
+                    for i, mem in enumerate(similar_memories, 1):
+                        score_info = f" [Score: {mem['score']:.2f}]" if debug_mode else ""
+                        response += f"\n{i}. {mem['content']} (ID: {mem['id']}){score_info}"
+                    response += "\n\nIf there is a conflict, please remove the old memory using the remove_memory tool."
+
+                return response
+            except Exception as e:
+                logger.warning(f"Failed to search similar memories: {e}")
+                if ctx:
+                    await ctx.debug(f"Failed to search similar memories: {e}")
+                return result
         except Exception as e:
-            await db.rollback()  # Rollback on error
+            await db.rollback()
             
             if ctx:
                 await ctx.error(f"Failed to store memory: {str(e)}")
