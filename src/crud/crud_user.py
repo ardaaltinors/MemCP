@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.security import get_password_hash, verify_password
 from src.db.models.user import User
 from src.schemas.user import UserCreate, UserUpdate
+from src.utils.auth_cache import AuthCache
 
 async def get_user(db: AsyncSession, user_id: int) -> Optional[User]:
     result = await db.execute(select(User).filter(User.id == user_id))
@@ -46,13 +47,17 @@ async def update_user(db: AsyncSession, db_user: User, user_in: UserUpdate) -> U
         hashed_password = get_password_hash(update_data["password"])
         del update_data["password"] # Remove plain password
         db_user.hashed_password = hashed_password
-    
+
     for field, value in update_data.items():
         setattr(db_user, field, value)
-    
+
     db.add(db_user)
     await db.flush()
     await db.refresh(db_user)
+
+    # Invalidate all caches for this user
+    AuthCache.invalidate_all_user_caches(db_user)
+
     return db_user
 
 async def authenticate_user(db: AsyncSession, username: str, password: str) -> Optional[User]:
@@ -74,28 +79,47 @@ def is_user_active(user: User) -> bool:
 
 async def create_api_key(db: AsyncSession, user: User) -> str:
     """Generate a new API key for the user"""
+    # Store old API key to invalidate its cache
+    old_api_key = user.api_key
+
     # Generate a secure random API key
     api_key = f"sk_{secrets.token_urlsafe(32)}"
-    
+
     # Update user with the new API key
     user.api_key = api_key
     user.api_key_created_at = datetime.now(timezone.utc)
-    
+
     db.add(user)
     await db.flush()
     await db.refresh(user)
-    
+
+    # Invalidate old API key cache if it existed
+    if old_api_key:
+        AuthCache.invalidate_user_by_api_key(old_api_key)
+
+    # Invalidate username cache (user object changed)
+    AuthCache.invalidate_user_by_username(user.username)
+
     return api_key
 
 async def revoke_api_key(db: AsyncSession, user: User) -> bool:
     """Revoke the user's API key"""
     if user.api_key:
+        # Store API key before revoking
+        old_api_key = user.api_key
+
         user.api_key = None
         user.api_key_created_at = None
-        
+
         db.add(user)
         await db.flush()
         await db.refresh(user)
+
+        # Invalidate the API key cache
+        AuthCache.invalidate_user_by_api_key(old_api_key)
+        # Invalidate username cache (user object changed)
+        AuthCache.invalidate_user_by_username(user.username)
+
         return True
     return False
 
@@ -163,7 +187,10 @@ async def delete_user_and_all_data(db: AsyncSession, user: User) -> dict:
     )
     stats["processed_profiles_deleted"] = profile_result.rowcount
 
-    # 6. Finally, delete the user
+    # 6. Invalidate all caches for this user
+    AuthCache.invalidate_all_user_caches(user)
+
+    # 7. Finally, delete the user
     await db.delete(user)
     await db.flush()
 
