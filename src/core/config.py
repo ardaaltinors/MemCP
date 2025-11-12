@@ -149,4 +149,4 @@ def get_mcp_connection_url(api_key: str) -> str:
             expected_type="string"
         )
     
-    return f"{MCP_BASE_URL}/mcp/{api_key}" 
+    return f"{MCP_BASE_URL}/mcp/{api_key}"

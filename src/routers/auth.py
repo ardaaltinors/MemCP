@@ -177,7 +177,7 @@ async def get_api_key_info(current_user: DBUser = Depends(get_current_active_use
 async def revoke_api_key(current_user: DBUser = Depends(get_current_active_user), db: AsyncSession = Depends(get_async_db)):
     """
     Revoke the current user's API key.
-    
+
     After calling this endpoint, the API key will no longer be valid for authentication.
     """
     success = await crud_user.revoke_api_key(db, current_user)
@@ -188,3 +188,36 @@ async def revoke_api_key(current_user: DBUser = Depends(get_current_active_user)
             record_id=str(current_user.id)
         )
     return {"message": "API key revoked successfully"}
+
+
+@router.delete("/users/me", tags=["Users"], status_code=status.HTTP_200_OK)
+async def delete_account(
+    deletion_request: user_schema.AccountDeletionRequest,
+    current_user: DBUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Permanently delete user account and ALL associated data.
+    """
+    REQUIRED_CONFIRMATION = "DELETE"
+
+    if deletion_request.confirm != REQUIRED_CONFIRMATION:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f'Invalid confirmation string. You must provide exactly: "{REQUIRED_CONFIRMATION}"'
+        )
+
+    try:
+        stats = await crud_user.delete_user_and_all_data(db, current_user)
+        await db.commit()
+
+        return {
+            "message": "Account and all associated data have been permanently deleted",
+            "deletion_stats": stats
+        }
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete account: {str(e)}"
+        )

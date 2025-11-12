@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { changePassword, deleteAllMemories } from '@libs/api';
+import { changePassword, deleteAllMemories, deleteAccount } from '@libs/api';
 import { authUtils } from '@libs/utils/auth';
-import { Eye, EyeOff, Lock, Trash2, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff, Lock, Trash2, AlertTriangle, UserX } from 'lucide-react';
 
 export const SettingsContainer: React.FC = () => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isDeletingMemories, setIsDeletingMemories] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteAccountConfirmText, setDeleteAccountConfirmText] = useState('');
   
   const [passwordForm, setPasswordForm] = useState({
     oldPassword: '',
@@ -81,16 +84,16 @@ export const SettingsContainer: React.FC = () => {
     setIsDeletingMemories(true);
     setErrors({});
     setSuccess({});
-    
+
     try {
       const token = authUtils.getToken();
       if (!token) throw new Error('Not authenticated');
-      
+
       await deleteAllMemories(token);
-      
+
       setSuccess({ memories: 'All memories deleted successfully!' });
       setShowDeleteConfirm(false);
-      
+
       // Clear success message after 5 seconds
       setTimeout(() => setSuccess({}), 5000);
     } catch (error) {
@@ -98,6 +101,28 @@ export const SettingsContainer: React.FC = () => {
       setErrors({ memories: message });
     } finally {
       setIsDeletingMemories(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeletingAccount(true);
+    setErrors({});
+    setSuccess({});
+
+    try {
+      const token = authUtils.getToken();
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await deleteAccount(token, deleteAccountConfirmText);
+
+      // Log the user out and redirect to home
+      authUtils.clearAuth();
+      window.location.href = '/';
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete account';
+      setErrors({ account: message });
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -304,6 +329,79 @@ export const SettingsContainer: React.FC = () => {
                   {success.memories && (
                     <div className="mt-4 p-3 rounded-lg bg-green-900/20 border border-green-500/30">
                       <p className="text-sm text-green-400">{success.memories}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Delete Account Section */}
+            <div className="bg-red-900/20 border border-red-900/50 rounded-lg p-4">
+              <div className="flex items-start space-x-3">
+                <UserX className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h3 className="text-lg font-medium text-red-500 mb-2">Delete Account</h3>
+                  <p className="text-sm text-gray-300 mb-4">
+                    Permanently delete your account and ALL associated data including memories, OAuth connections, and API keys. This action cannot be undone.
+                  </p>
+
+                  {!showDeleteAccountConfirm ? (
+                    <button
+                      onClick={() => {
+                        setShowDeleteAccountConfirm(true);
+                        setDeleteAccountConfirmText('');
+                      }}
+                      className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
+                    >
+                      <UserX className="h-4 w-4" />
+                      <span>Delete My Account</span>
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium text-red-500">
+                        ⚠️ This will permanently delete your account and ALL data. Type "DELETE" to confirm:
+                      </p>
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="text"
+                          value={deleteAccountConfirmText}
+                          placeholder="Type DELETE to confirm"
+                          className={`px-3 py-2 bg-gray-800/50 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 ${
+                            deleteAccountConfirmText === 'DELETE' ? 'border-green-500' : 'border-gray-600'
+                          }`}
+                          onChange={(e) => setDeleteAccountConfirmText(e.target.value)}
+                        />
+                        <button
+                          onClick={handleDeleteAccount}
+                          disabled={isDeletingAccount || deleteAccountConfirmText !== 'DELETE'}
+                          className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isDeletingAccount ? (
+                            <div className="flex items-center">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Deleting...
+                            </div>
+                          ) : (
+                            "Confirm Delete"
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowDeleteAccountConfirm(false);
+                            setDeleteAccountConfirmText('');
+                          }}
+                          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error Messages */}
+                  {errors.account && (
+                    <div className="mt-4 p-3 rounded-lg bg-red-900/20 border border-red-500/30">
+                      <p className="text-sm text-red-400">{errors.account}</p>
                     </div>
                   )}
                 </div>

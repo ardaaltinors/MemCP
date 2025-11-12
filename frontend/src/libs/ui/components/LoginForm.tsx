@@ -247,6 +247,29 @@ export const LoginForm: FC<LoginFormProps> = ({ onSubmit, onSuccess, onError }) 
                     )}
                 </button>
 
+                {/* Divider */}
+                <div className="flex items-center my-4">
+                    <div className="flex-1 h-px bg-gray-700" />
+                    <span className="px-3 text-gray-400 text-sm">or</span>
+                    <div className="flex-1 h-px bg-gray-700" />
+                </div>
+
+                {/* OAuth (GitHub) */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        const frontendCallback = `${window.location.origin}/auth/callback`;
+                        const url = `/api/auth/oauth/github/authorize?redirect_uri=${encodeURIComponent(frontendCallback)}`;
+                        window.location.href = url;
+                    }}
+                    className="w-full py-3 px-4 rounded-lg font-semibold text-white bg-gray-800 hover:bg-gray-700 border border-gray-600 flex items-center justify-center gap-2"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                        <path fillRule="evenodd" d="M12 2C6.477 2 2 6.486 2 12.021c0 4.428 2.865 8.184 6.839 9.504.5.093.682-.218.682-.485 0-.24-.009-.876-.014-1.72-2.782.605-3.369-1.343-3.369-1.343-.455-1.158-1.11-1.468-1.11-1.468-.908-.62.069-.607.069-.607 1.004.071 1.532 1.033 1.532 1.033.892 1.53 2.341 1.088 2.91.832.091-.647.35-1.088.636-1.339-2.22-.254-4.555-1.113-4.555-4.951 0-1.093.39-1.987 1.029-2.687-.103-.254-.446-1.276.098-2.66 0 0 .84-.269 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.295 2.748-1.026 2.748-1.026.545 1.384.202 2.406.1 2.66.64.7 1.028 1.594 1.028 2.687 0 3.847-2.338 4.694-4.566 4.943.359.31.679.922.679 1.858 0 1.34-.012 2.42-.012 2.75 0 .269.18.582.688.483C19.138 20.2 22 16.445 22 12.02 22 6.486 17.523 2 12 2z" clipRule="evenodd" />
+                    </svg>
+                    Continue with GitHub
+                </button>
+
                 {/* Additional Links */}
                 <div className="text-center">
                     <a

@@ -1,5 +1,6 @@
 import os
 import sys
+from dotenv import load_dotenv
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -15,6 +16,9 @@ config = context.config
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# Load environment variables from .env if present
+load_dotenv()
 
 # Add src to sys.path
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -33,22 +37,21 @@ target_metadata = Base.metadata
 # ... etc.
 
 def get_url():
-    # Use the DATABASE_URL from our config.py which builds the connection string
-    try:
-        from src.core.config import DATABASE_URL
-        return DATABASE_URL
-    except ImportError:
-        # Fallback for cases where config is not available
-        db_host = os.getenv("DB_HOST", "localhost")
-        db_port = os.getenv("DB_PORT", "5432")
-        db_name = os.getenv("DB_NAME", "memory_mcp")
-        db_user = os.getenv("DB_USER", "memory_user")
-        db_password = os.getenv("DB_PASSWORD")
-        
-        if not db_password:
-            raise ValueError("DB_PASSWORD environment variable is required")
-        
-        return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    """Build a DB URL purely from environment variables.
+
+    Avoid importing application config here to prevent requiring non-DB env
+    (like API_SERVER_PORT, MCP vars) during migrations.
+    """
+    db_host = os.getenv("DB_HOST", "localhost")
+    db_port = os.getenv("DB_PORT", "5432")
+    db_name = os.getenv("DB_NAME", "memory_mcp")
+    db_user = os.getenv("DB_USER", "memory_user")
+    db_password = os.getenv("DB_PASSWORD")
+
+    if not db_password:
+        raise RuntimeError("DB_PASSWORD environment variable is required for Alembic migrations")
+
+    return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
