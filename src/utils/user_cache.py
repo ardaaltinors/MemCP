@@ -11,30 +11,44 @@ CACHE_TTL = 300
 
 
 def _user_to_dict(user: User) -> dict:
-    return {
-        "id": str(user.id),
-        "email": user.email,
-        "username": user.username,
-        "hashed_password": user.hashed_password,
-        "is_active": user.is_active,
-        "is_superuser": user.is_superuser,
-        "api_key": user.api_key,
-        "api_key_created_at": user.api_key_created_at.isoformat() if user.api_key_created_at else None,
-    }
+    try:
+        return {
+            "id": str(user.id),
+            "email": user.email,
+            "username": user.username,
+            "hashed_password": user.hashed_password,
+            "is_active": user.is_active,
+            "is_superuser": user.is_superuser,
+            "api_key": user.api_key,
+            "api_key_created_at": user.api_key_created_at.isoformat() if user.api_key_created_at else None,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "updated_at": user.updated_at.isoformat() if user.updated_at else None,
+        }
+    except Exception as e:
+        logger.warning(f"Failed to serialize user {user.username}: {e}")
+        raise
 
 
 def _dict_to_user(data: dict) -> User:
-    user = User()
-    user.id = data["id"]
-    user.email = data["email"]
-    user.username = data["username"]
-    user.hashed_password = data["hashed_password"]
-    user.is_active = data["is_active"]
-    user.is_superuser = data["is_superuser"]
-    user.api_key = data.get("api_key")
-    if data.get("api_key_created_at"):
-        user.api_key_created_at = datetime.fromisoformat(data["api_key_created_at"])
-    return user
+    try:
+        user = User()
+        user.id = data["id"]
+        user.email = data["email"]
+        user.username = data["username"]
+        user.hashed_password = data["hashed_password"]
+        user.is_active = data["is_active"]
+        user.is_superuser = data["is_superuser"]
+        user.api_key = data.get("api_key")
+        if data.get("api_key_created_at"):
+            user.api_key_created_at = datetime.fromisoformat(data["api_key_created_at"])
+        if data.get("created_at"):
+            user.created_at = datetime.fromisoformat(data["created_at"])
+        if data.get("updated_at"):
+            user.updated_at = datetime.fromisoformat(data["updated_at"])
+        return user
+    except Exception as e:
+        logger.warning(f"Failed to deserialize user data: {e}")
+        raise
 
 
 def _get_cache_keys(user: User) -> list[str]:
