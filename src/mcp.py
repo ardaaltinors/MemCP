@@ -28,16 +28,16 @@ IMPORTANT: When calling tools, ensure parameters are in the correct format:
 - For all text parameters: Provide as plain strings
 
 Key behaviors:
-1. To store information, use the store_item tool
-2. To retrieve stored information, use the search_items tool
-3. To remove stored information, use the delete_item tool
-4. Call the get_context tool on every user message to retrieve relevant context""",
+1. To store information, use the remember_fact tool
+2. To retrieve stored information, use the get_related_memory tool
+3. To remove stored information, use the remove_memory tool
+4. Call the record_and_get_context tool on every user message to retrieve relevant context""",
     auth=build_auth_provider(),
 )
 memory_manager = MemoryManager()
 
 @mcp.tool()
-async def store_item(
+async def remember_fact(
     content: str = Field(
         description=(
             "The text content to store for later retrieval. "
@@ -116,7 +116,7 @@ async def store_item(
                     for i, mem in enumerate(similar_memories, 1):
                         score_info = f" [Score: {mem['score']:.2f}]" if debug_mode else ""
                         response += f"\n{i}. {mem['content']} (ID: {mem['id']}){score_info}"
-                    response += "\n\nIf there is a conflict, consider removing the old item using the delete_item tool."
+                    response += "\n\nIf there is a conflict, consider removing the old item using the remove_memory tool."
 
                 return response
             except Exception as e:
@@ -134,7 +134,7 @@ async def store_item(
 
 
 @mcp.tool()
-async def get_context(
+async def record_and_get_context(
     prompt: str = Field(
         description=(
             "The user's message text. For very large inputs (code files, logs), "
@@ -177,7 +177,7 @@ async def get_context(
 
 
 @mcp.tool()
-async def search_items(
+async def get_related_memory(
     query: str = Field(description="The search query text. Keep it short and concise."),
     ctx: Context = None
 ) -> list[dict]:
@@ -211,8 +211,8 @@ async def search_items(
 
 
 @mcp.tool()
-async def delete_item(
-    item_id: str = Field(description="The unique identifier of the item to delete. This ID is returned when items are created or searched."),
+async def remove_memory(
+    memory_id: str = Field(description="The unique identifier of the item to delete. This ID is returned when items are created or searched."),
     ctx: Context = None
 ) -> str:
     """
@@ -224,14 +224,14 @@ async def delete_item(
     - Honor a user's request to delete specific information
     """
     if ctx:
-        await ctx.info(f"[Request: {ctx.request_id}] Deleting item with ID: {item_id}")
+        await ctx.info(f"[Request: {ctx.request_id}] Deleting item with ID: {memory_id}")
 
     session_maker = get_async_sessionmaker()
     async with session_maker() as db:
         try:
             from src.utils.mcp_context import resolve_user_id
             user_id = await resolve_user_id(ctx, db)
-            result = await memory_manager.delete_memory(item_id, db, user_id)
+            result = await memory_manager.delete_memory(memory_id, db, user_id)
             await db.commit()
 
             if ctx:
@@ -242,7 +242,7 @@ async def delete_item(
             await db.rollback()
 
             if ctx:
-                await ctx.error(f"Failed to delete item {item_id}: {str(e)}")
+                await ctx.error(f"Failed to delete item {memory_id}: {str(e)}")
 
             raise e
 
