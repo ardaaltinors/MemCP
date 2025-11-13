@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.security import get_password_hash, verify_password
 from src.db.models.user import User
 from src.schemas.user import UserCreate, UserUpdate
+from src.utils.user_cache import get_cached_user, set_cached_user, invalidate_user_cache, invalidate_user_cache_by_keys
 
 async def get_user(db: AsyncSession, user_id: int) -> Optional[User]:
     result = await db.execute(select(User).filter(User.id == user_id))
@@ -18,12 +19,32 @@ async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
     return result.scalars().first()
 
 async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User]:
+    cache_key = f"user:username:{username}"
+    cached_user = get_cached_user(cache_key)
+    if cached_user:
+        return cached_user
+
     result = await db.execute(select(User).filter(User.username == username))
-    return result.scalars().first()
+    user = result.scalars().first()
+
+    if user:
+        set_cached_user(user)
+
+    return user
 
 async def get_user_by_api_key(db: AsyncSession, api_key: str) -> Optional[User]:
+    cache_key = f"user:apikey:{api_key}"
+    cached_user = get_cached_user(cache_key)
+    if cached_user:
+        return cached_user
+
     result = await db.execute(select(User).filter(User.api_key == api_key))
-    return result.scalars().first()
+    user = result.scalars().first()
+
+    if user:
+        set_cached_user(user)
+
+    return user
 
 
 async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
@@ -41,18 +62,24 @@ async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
     return db_user
 
 async def update_user(db: AsyncSession, db_user: User, user_in: UserUpdate) -> User:
+    old_username = db_user.username
+    old_api_key = db_user.api_key
+
     update_data = user_in.model_dump(exclude_unset=True) # Use model_dump for Pydantic v2+
     if "password" in update_data and update_data["password"]:
         hashed_password = get_password_hash(update_data["password"])
         del update_data["password"] # Remove plain password
         db_user.hashed_password = hashed_password
-    
+
     for field, value in update_data.items():
         setattr(db_user, field, value)
-    
+
     db.add(db_user)
     await db.flush()
     await db.refresh(db_user)
+
+    invalidate_user_cache(db_user, old_username=old_username, old_api_key=old_api_key)
+
     return db_user
 
 async def authenticate_user(db: AsyncSession, username: str, password: str) -> Optional[User]:
@@ -74,28 +101,37 @@ def is_user_active(user: User) -> bool:
 
 async def create_api_key(db: AsyncSession, user: User) -> str:
     """Generate a new API key for the user"""
+    old_api_key = user.api_key
+
     # Generate a secure random API key
     api_key = f"sk_{secrets.token_urlsafe(32)}"
-    
+
     # Update user with the new API key
     user.api_key = api_key
     user.api_key_created_at = datetime.now(timezone.utc)
-    
+
     db.add(user)
     await db.flush()
     await db.refresh(user)
-    
+
+    invalidate_user_cache(user, old_api_key=old_api_key)
+    set_cached_user(user)
+
     return api_key
 
 async def revoke_api_key(db: AsyncSession, user: User) -> bool:
     """Revoke the user's API key"""
     if user.api_key:
+        old_api_key = user.api_key
         user.api_key = None
         user.api_key_created_at = None
-        
+
         db.add(user)
         await db.flush()
         await db.refresh(user)
+
+        invalidate_user_cache(user, old_api_key=old_api_key)
+
         return True
     return False
 
@@ -163,7 +199,10 @@ async def delete_user_and_all_data(db: AsyncSession, user: User) -> dict:
     )
     stats["processed_profiles_deleted"] = profile_result.rowcount
 
-    # 6. Finally, delete the user
+    # 6. Invalidate cache before deleting user
+    invalidate_user_cache(user)
+
+    # 7. Finally, delete the user
     await db.delete(user)
     await db.flush()
 
