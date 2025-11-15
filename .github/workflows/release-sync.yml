@@ -1,0 +1,38 @@
+name: Sync release branch on version tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sync-release:
+    if: ${{ !github.event.deleted }}
+    runs-on: ubuntu-latest
+    env:
+      MAIN_BRANCH: main
+      RELEASE_BRANCH: release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Hard reset 'release' to 'main'
+        run: |
+          set -euxo pipefail
+          git fetch origin "+refs/heads/${MAIN_BRANCH}:refs/remotes/origin/${MAIN_BRANCH}"
+          git checkout -B "${RELEASE_BRANCH}" "origin/${MAIN_BRANCH}"
+          git push origin "${RELEASE_BRANCH}" --force

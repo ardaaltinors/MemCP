@@ -1,0 +1,37 @@
+name: Sync test branch on test tag
+
+on:
+  push:
+    tags:
+      - 't*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: test-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sync-test:
+    if: ${{ !github.event.deleted }}
+    runs-on: ubuntu-latest
+    env:
+      TEST_BRANCH: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Hard reset 'test' to tagged commit
+        run: |
+          set -euxo pipefail
+          TAG_COMMIT=$(git rev-parse "${GITHUB_REF}")
+          git checkout -B "${TEST_BRANCH}" "${TAG_COMMIT}"
+          git push origin "${TEST_BRANCH}" --force
