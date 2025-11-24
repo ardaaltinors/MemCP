@@ -190,9 +190,6 @@ services:
     container_name: memory-mcp-redis
     restart: unless-stopped
 
-    sysctls:
-      - vm.overcommit_memory=1
-
     volumes:
       - redis_data:/data
     
