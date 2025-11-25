@@ -34,6 +34,8 @@ services:
       # AI Services
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-5-mini}
       - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY}
       - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-true}
       - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT:-memory_mcp}
@@ -244,7 +246,9 @@ services:
       # AI Services
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-    
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-5-mini}
+
     depends_on:
       - postgres
       - rabbitmq
