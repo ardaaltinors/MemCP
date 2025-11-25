@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 try:
     _llm = ChatGoogleGenerativeAI(
         temperature=0, 
-        model="gemini-2.5-flash",
+        model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
         timeout=120,
         max_retries=2
     )
@@ -26,7 +26,7 @@ except Exception as e:
     
     _llm = ChatOpenAI(
         temperature=0,
-        model="gpt-5-mini",
+        model=os.getenv("OPENAI_MODEL", "gpt-5-mini"),
         timeout=120,
         max_retries=2
     )
@@ -78,7 +78,7 @@ def get_llm_profile_synthesis(
         
         backup_llm = ChatOpenAI(
             temperature=0,
-            model="gpt-5-mini",
+            model=os.getenv("OPENAI_MODEL", "gpt-5-mini"),
             timeout=120,
             max_retries=2
         )
