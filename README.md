@@ -75,7 +75,7 @@ Configure your AI assistant to connect to the MCP server:
 
 Use the API key from your dashboard for authentication. For local setup configuration details, see [RUNNING_LOCALLY.md](docs/RUNNING_LOCALLY.md).
 
-## Use Casesn
+## Use Cases
 
 - **Personal AI Assistant**: Give your AI assistant long-term memory about your preferences and history
 - **Customer Support**: Maintain context across multiple support interactions
