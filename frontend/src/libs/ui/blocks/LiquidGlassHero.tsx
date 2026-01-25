@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface LiquidGlassHeroProps {
     title: string;
@@ -8,6 +8,7 @@ interface LiquidGlassHeroProps {
 export const LiquidGlassHero: React.FC<LiquidGlassHeroProps> = ({ title, description }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -106,13 +107,16 @@ export const LiquidGlassHero: React.FC<LiquidGlassHeroProps> = ({ title, descrip
                 <p className="hero-description">{description}</p>
                 
                 <div className="hero-actions">
-                    <button className="hero-btn primary-btn liquid-glass">
-                        <span>Get Started Free</span>
+                    <a href="/register" className="hero-btn primary-btn liquid-glass">
+                        <span>Get Started</span>
                         <svg className="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M5 12h14M12 5l7 7-7 7" />
                         </svg>
-                    </button>
-                    <button className="hero-btn secondary-btn liquid-glass">
+                    </a>
+                    <button
+                        className="hero-btn secondary-btn liquid-glass"
+                        onClick={() => setIsVideoModalOpen(true)}
+                    >
                         <span>Watch Demo</span>
                         <svg className="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M8 5v14l11-7z" />
@@ -148,6 +152,37 @@ export const LiquidGlassHero: React.FC<LiquidGlassHeroProps> = ({ title, descrip
                 </div>
             </div>
             
+            {isVideoModalOpen && (
+                <div
+                    className="video-modal-overlay"
+                    onClick={() => setIsVideoModalOpen(false)}
+                >
+                    <div
+                        className="video-modal-container"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            className="video-modal-close"
+                            onClick={() => setIsVideoModalOpen(false)}
+                            aria-label="Close video"
+                        >
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                        </button>
+                        <div className="video-modal-content">
+                            <iframe
+                                src="https://www.youtube.com/embed/tVEuiK0VJJU?autoplay=1"
+                                title="MemCP Demo"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                loading="lazy"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <style>{`
                 .liquid-glass-hero {
                     position: relative;
@@ -281,6 +316,7 @@ export const LiquidGlassHero: React.FC<LiquidGlassHeroProps> = ({ title, descrip
                     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
                     position: relative;
                     overflow: hidden;
+                    text-decoration: none;
                 }
                 
                 .primary-btn {
@@ -461,22 +497,105 @@ export const LiquidGlassHero: React.FC<LiquidGlassHeroProps> = ({ title, descrip
                     transform: rotate(-45deg);
                 }
                 
+                .video-modal-overlay {
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(0, 0, 0, 0.6);
+                    backdrop-filter: blur(8px);
+                    -webkit-backdrop-filter: blur(8px);
+                    z-index: 50;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    animation: fadeIn 0.2s ease-out;
+                }
+
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+
+                .video-modal-container {
+                    position: relative;
+                    max-width: 900px;
+                    width: 100%;
+                    margin: 0 16px;
+                    animation: scaleIn 0.2s ease-out;
+                }
+
+                @keyframes scaleIn {
+                    from {
+                        opacity: 0;
+                        transform: scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+
+                .video-modal-close {
+                    position: absolute;
+                    top: -48px;
+                    right: 0;
+                    background: rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 50%;
+                    width: 40px;
+                    height: 40px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    color: white;
+                    transition: all 0.2s ease;
+                }
+
+                .video-modal-close:hover {
+                    background: rgba(255, 255, 255, 0.2);
+                    transform: scale(1.1);
+                }
+
+                .video-modal-content {
+                    position: relative;
+                    aspect-ratio: 16 / 9;
+                    background: #000;
+                    border-radius: 16px;
+                    overflow: hidden;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                }
+
+                .video-modal-content iframe {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    border: none;
+                }
+
                 @media (max-width: 768px) {
                     .liquid-glass-hero {
                         padding: 100px 20px 60px;
                     }
-                    
+
                     .hero-actions {
                         flex-direction: column;
                         align-items: center;
                     }
-                    
+
                     .hero-stats {
                         grid-template-columns: 1fr;
                     }
-                    
+
                     .hero-visual {
                         display: none;
+                    }
+
+                    .video-modal-close {
+                        top: -44px;
+                        width: 36px;
+                        height: 36px;
                     }
                 }
             `}</style>

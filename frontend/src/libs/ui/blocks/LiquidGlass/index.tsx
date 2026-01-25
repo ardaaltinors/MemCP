@@ -868,12 +868,12 @@ export const LiquidGlassGetStarted: React.FC = () => {
                         Join thousands of users building smarter AI conversations.
                     </p>
                     <div className="cta-actions">
-                        <button className="cta-btn primary-btn liquid-glass">
-                            <span>Start Free Trial</span>
+                        <a href="/register" className="cta-btn primary-btn liquid-glass">
+                            <span>Start Now</span>
                             <svg className="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M5 12h14M12 5l7 7-7 7" />
                             </svg>
-                        </button>
+                        </a>
                         <button className="cta-btn secondary-btn liquid-glass">
                             <span>View Documentation</span>
                         </button>
@@ -934,6 +934,7 @@ export const LiquidGlassGetStarted: React.FC = () => {
                     font-weight: 500;
                     cursor: pointer;
                     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    text-decoration: none;
                 }
                 
                 .primary-btn {

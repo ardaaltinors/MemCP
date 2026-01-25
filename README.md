@@ -1,6 +1,11 @@
 <div align="center">
   <h1>MemCP - Portable Memory for AI</h1>
   <p><i>Give your AI assistant long-term memory that persists across conversations and platforms</i></p>
+
+  <a href="https://youtu.be/tVEuiK0VJJU">
+    <img src="frontend/src/static/images/memcp-dashboard.png" alt="Watch the demo" width="600">
+  </a>
+  <p><a href="https://youtu.be/tVEuiK0VJJU">▶️ Watch the Demo</a></p>
 </div>
 
 ---
