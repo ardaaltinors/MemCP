@@ -1,6 +1,11 @@
 <div align="center">
   <h1>MemCP - Portable Memory for AI</h1>
   <p><i>Give your AI assistant long-term memory that persists across conversations and platforms</i></p>
+
+  <a href="https://youtu.be/tVEuiK0VJJU">
+    <img src="frontend/src/static/images/memcp-dashboard.png" alt="Watch the demo" width="600">
+  </a>
+  <p><a href="https://youtu.be/tVEuiK0VJJU">▶️ Watch the Demo</a></p>
 </div>
 
 ---
@@ -70,7 +75,7 @@ Configure your AI assistant to connect to the MCP server:
 
 Use the API key from your dashboard for authentication. For local setup configuration details, see [RUNNING_LOCALLY.md](docs/RUNNING_LOCALLY.md).
 
-## Use Casesn
+## Use Cases
 
 - **Personal AI Assistant**: Give your AI assistant long-term memory about your preferences and history
 - **Customer Support**: Maintain context across multiple support interactions
