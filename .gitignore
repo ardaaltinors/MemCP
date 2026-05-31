@@ -18,3 +18,8 @@ wheels/
 .vscode/
 .cursor/
 docs-internal/
+
+# Local agent files
+**/.claude/
+**/AGENTS.md
+**/CLAUDE.md
