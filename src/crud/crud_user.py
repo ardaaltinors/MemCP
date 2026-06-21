@@ -62,6 +62,7 @@ async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
     return db_user
 
 async def update_user(db: AsyncSession, db_user: User, user_in: UserUpdate) -> User:
+    db_user = await db.get(User, db_user.id)
     old_username = db_user.username
     old_api_key = db_user.api_key
 
@@ -74,7 +75,6 @@ async def update_user(db: AsyncSession, db_user: User, user_in: UserUpdate) -> U
     for field, value in update_data.items():
         setattr(db_user, field, value)
 
-    db.add(db_user)
     await db.flush()
     await db.refresh(db_user)
 
@@ -101,36 +101,43 @@ def is_user_active(user: User) -> bool:
 
 async def create_api_key(db: AsyncSession, user: User) -> str:
     """Generate a new API key for the user"""
-    old_api_key = user.api_key
+    db_user = await db.get(User, user.id)
+    old_api_key = db_user.api_key
 
-    # Generate a secure random API key
     api_key = f"sk_{secrets.token_urlsafe(32)}"
+    created_at = datetime.now(timezone.utc)
 
-    # Update user with the new API key
-    user.api_key = api_key
-    user.api_key_created_at = datetime.now(timezone.utc)
+    db_user.api_key = api_key
+    db_user.api_key_created_at = created_at
 
-    db.add(user)
     await db.flush()
-    await db.refresh(user)
+    await db.refresh(db_user)
 
-    invalidate_user_cache(user, old_api_key=old_api_key)
-    set_cached_user(user)
+    # The caller may hold a detached cache instance; keep it in sync so the
+    # response and cache reflect the new key.
+    user.api_key = api_key
+    user.api_key_created_at = created_at
+
+    invalidate_user_cache(db_user, old_api_key=old_api_key)
+    set_cached_user(db_user)
 
     return api_key
 
 async def revoke_api_key(db: AsyncSession, user: User) -> bool:
     """Revoke the user's API key"""
-    if user.api_key:
-        old_api_key = user.api_key
+    db_user = await db.get(User, user.id)
+    if db_user.api_key:
+        old_api_key = db_user.api_key
+        db_user.api_key = None
+        db_user.api_key_created_at = None
+
+        await db.flush()
+        await db.refresh(db_user)
+
         user.api_key = None
         user.api_key_created_at = None
 
-        db.add(user)
-        await db.flush()
-        await db.refresh(user)
-
-        invalidate_user_cache(user, old_api_key=old_api_key)
+        invalidate_user_cache(db_user, old_api_key=old_api_key)
 
         return True
     return False
@@ -203,7 +210,9 @@ async def delete_user_and_all_data(db: AsyncSession, user: User) -> dict:
     invalidate_user_cache(user)
 
     # 7. Finally, delete the user
-    await db.delete(user)
-    await db.flush()
+    db_user = await db.get(User, user.id)
+    if db_user is not None:
+        await db.delete(db_user)
+        await db.flush()
 
-    return stats 
+    return stats
